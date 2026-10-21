@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Starsilk: The Unmaking Engine</title>
+<meta name="description" content="An interactive cosmic destruction instrument — pull a strand of Starsilk and witness a star surrender.">
+<style>
+  :root{
+    --void:#040408;
+    --void-deep:#020204;
+    --ink:#0a0a12;
+    --azure:#00d4ff;
+    --azure-deep:#0b6ef5;
+    --azure-dim:#1e4a8a;
+    --absence:#0d0d14;
+    --absence-edge:#2a2a3a;
+    --lens:#161626;
+    --text:#e8eef7;
+    --text-dim:#8b94a8;
+    --danger:#ff4d6d;
+    --ok:#7ee8a7;
+    --gold:#f2b84b;
+    --font-display:'Ironfall', 'Segoe UI', system-ui, sans-serif;
+    --font-body:'Inter', system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;}
+  body{
+    background:var(--void);
+    color:var(--text);
+    font-family:var(--font-body);
+    overflow:hidden;
+    touch-action:none;
+  }
+  canvas#stage{display:block;width:100vw;height:100vh;background:radial-gradient(circle at 50% 40%, #0c0c16 0%, var(--void-deep) 55%, var(--void) 100%);}
+
+  /* ---------- Chrome / UI ---------- */
+  header#chrome{
+    position:absolute;top:0;left:0;right:0;
+    height:56px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 20px;
+    z-index:50;
+    background:linear-gradient(180deg, rgba(4,4,8,0.75) 0%, transparent 100%);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid rgba(139,148,168,0.12);
+  }
+  #title-block{display:flex;flex-direction:column;line-height:1.05;}
+  #title-block .appname{
+    font-family:var(--font-display);font-weight:900;letter-spacing:0.14em;font-size:15px;
+    color:var(--azure);text-transform:uppercase;
+  }
+  #title-block .descriptor{
+    font-size:9.5px;letter-spacing:0.22em;color:var(--text-dim);text-transform:uppercase;
+    opacity:0.85;white-space:nowrap;
+  }
+  #controls{display:flex;align-items:center;gap:14px;white-space:nowrap;}
+  .togglegroup{display:flex;align-items:center;gap:8px;border:1px solid rgba(139,148,168,0.25);
+    background:rgba(4,4,8,0.55);border-radius:999px;padding:3px 10px;}
+  .togglegroup b{font-size:9.5px;letter-spacing:0.18em;color:var(--text-dim);text-transform:uppercase;}
+  button.resetbtn{
+    background:transparent;border:1px solid rgba(139,148,168,0.35);color:var(--text);
+    font-size:11px;letter-spacing:0.14em;text-transform:uppercase;padding:6px 14px;border-radius:999px;
+    cursor:pointer;transition:transform .1s,border-color .2s,color .2s;
+  }
+  button.resetbtn:hover{border-color:var(--text);color:#fff;}
+  button.resetbtn:active{transform:scale(0.97);}
+
+  .controlbtn{
+    background:rgba(255,255,255,0.06);border:1px solid rgba(139,148,168,0.25);color:var(--text);
+    width:34px;height:34px;border-radius:50%;font-size:13px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;transition:border-color .2s,background .2s;
+  }
+  .controlbtn:hover{border-color:var(--azure);color:var(--azure);background:rgba(0,212,255,0.1);}
+
+  /* ---------- Instructions ---------- */
+  #instr{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    z-index:60;text-align:center;pointer-events:none;
+    font-family:var(--font-display);letter-spacing:0.35em;
+    font-size:16px;color:var(--azure);text-transform:uppercase;
+    opacity:0;transition:opacity .4s,letter-spacing .3s,transform .4s;
+    text-shadow:0 0 18px rgba(0,212,255,0.35);
+    mix-blend-mode:screen;
+  }
+  #instr.visible{opacity:1;}
+  #instr small{
+    display:block;font-family:var(--font-body);font-size:10px;letter-spacing:0.18em;
+    margin-top:8px;color:var(--text-dim);text-shadow:none;mix-blend-mode:normal;opacity:0.85;
+  }
+
+  /* ---------- Ledger ---------- */
+  #ledger{
+    position:absolute;bottom:0;right:0;
+    width:min(420px, 92vw);max-height:44vh;
+    background:linear-gradient(180deg, rgba(4,4,8,0.92) 0%, rgba(2,2,4,0.97) 100%);
+    border:1px solid rgba(139,148,168,0.18);border-top:none;border-right:none;
+    border-bottom-left-radius:16px;
+    backdrop-filter:blur(10px);z-index:55;
+    display:flex;flex-direction:column;box-shadow:-8px -8px 30px rgba(0,0,0,0.5);
+    transform:translatey(0);transition:transform .3s;
+  }
+  @media (max-width:640px){
+    #ledger{position:static;width:100vw;max-height:48vh;border:none;border-top:1px solid rgba(139,148,168,0.18);
+      border-radius:0;order:2;}
+    #ledger.collapsed-mobile{display:none;}
+  }
+  #ledger .ledger-head{
+    display:flex;align-items:center;justify-content:space-between;padding:12px 14px;
+    border-bottom:1px solid rgba(139,148,168,0.18);
+    font-family:var(--font-display);font-size:11px;letter-spacing:0.2em;color:var(--azure);
+    text-transform:uppercase;cursor:pointer;
+  }
+  #ledger .ledger-head .tag{margin-left:auto;font-size:10px;color:var(--text-dim);letter-spacing:normal;}
+  #ledger .ledger-body{overflow:auto;padding:10px 12px;flex:1;font-size:12px;line-height:1.45;color:var(--text-dim);}
+  #ledger .stat-row{margin-bottom:8px;display:flex;justify-content:space-between;}
+  #ledger .stat-row b{color:var(--text);font-size:13px;font-family:var(--font-display);}
+  #ledger .stat-row .v{font-variant-numeric:tabular-nums;color:var(--azure);}
+  #ledger .events{margin-top:6px;}
+  #ledger .events b.head{display:block;margin-bottom:6px;font-size:10px;letter-spacing:0.16em;color:var(--text-dim);text-transform:uppercase;}
+  #ledger .event{
+    border-left:2px solid rgba(0,212,255,0.25);padding:4px 8px;margin-bottom:7px;
+    background:rgba(255,255,255,0.03);border-radius:0 6px 6px 0;font-size:11.5px;line-height:1.4;
+  }
+  #ledger .event.chain{border-left-color:var(--gold);}
+  #ledger .event .who{color:var(--text);font-weight:700;}
+  #ledger .event .why{color:var(--text-dim);}
+  #ledger .event .lost{color:var(--danger);font-size:10.5px;margin-top:2px;display:block;}
+  #ledger .empty{color:var(--text-dim);font-style:italic;padding:10px 0;text-align:center;font-size:11px;}
+
+  /* ---------- Mobile ledger toggle ---------- */
+  #ledger-toggle{position:fixed;bottom:16px;right:16px;z-index:60;
+    background:var(--azure);color:#001825;width:44px;height:44px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;font-size:14px;
+    box-shadow:0 6px 20px rgba(0,212,255,0.45);cursor:pointer;opacity:0;transition:opacity .3s;}
+  @media (min-width:641px){#ledger-toggle{display:none;}}
+  #ledger-toggle.shown{opacity:1;}
+
+  /* ---------- Autopsy / Aftermath ---------- */
+  #autopsy{position:absolute;inset:0;z-index:70;display:none;flex-direction:column;
+    background:var(--void-deep);background:linear-gradient(180deg,#030306 0%,var(--void-deep) 60%,var(--void) 100%);}
+  #autopsy .autopsy-head{padding:16px 20px;border-bottom:1px solid rgba(139,148,168,0.15);
+    display:flex;align-items:center;justify-content:space-between;}
+  #autopsy h2{font-family:var(--font-display);font-size:17px;letter-spacing:0.2em;color:var(--azure);text-transform:uppercase;}
+  #autopsy .autopsy-head .closebtn{background:transparent;border:1px solid rgba(139,148,168,0.3);color:var(--text);
+    font-size:11px;padding:6px 14px;border-radius:999px;cursor:pointer;}
+  #autopsy .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;padding:20px;overflow:auto;}
+  #autopsy .card{border:1px solid rgba(139,148,168,0.18);background:rgba(4,4,8,0.5);border-radius:12px;padding:14px;}
+  #autopsy .card h3{font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:var(--azure);margin-bottom:10px;border-bottom:1px solid rgba(139,148,168,0.12);padding-bottom:6px;}
+  #autopsy .card ul{list-style:none;color:var(--text-dim);font-size:11.5px;line-height:1.6;}
+  #autopsy .card ul li{margin-bottom:5px;}
+  #autopsy .card .gone{color:var(--danger);}
+  #autopsy .card .intact{color:var(--ok);}
+  footer.note{padding:16px 20px;font-size:10px;color:var(--text-dim);border-top:1px solid rgba(139,148,168,0.1);text-align:center;line-height:1.5;}
+
+  /* ---------- Accessibility / screen reader ---------- */
+  #sr-live{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;white-space:nowrap;}
+  .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;}
+
+  /* ---------- Keyboard filaments (focus targets) ---------- */
+  .kfilament{
+    position:absolute;border-radius:50%;border:2px solid rgba(0,212,255,0.35);
+    background:rgba(0,212,255,0.06);cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;font-size:10px;letter-spacing:0.1em;
+    color:var(--azure);text-transform:uppercase;z-index:45;transition:border-color .2s,box-shadow .2s,background .2s;
+  }
+  .kfilament:focus-visible{outline:none;border-color:var(--azure);box-shadow:0 0 0 4px rgba(0,212,255,0.25);background:rgba(0,212,255,0.14);}
+  .kfilament.gripped{border-color:#fff;background:rgba(255,255,255,0.12);color:#fff;}
+
+  /* ---------- Reduced motion ---------- */
+  @media (prefers-reduced-motion: reduce){
+    #instr{transition:none;}
+    *{transition:none !important;animation:none !important;}
+  }
+
+  /* ---------- Reset confirm ---------- */
+  #confirm{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
+    background:rgba(2,2,4,0.85);backdrop-filter:blur(6px);}
+  #confirm .box{background:var(--void-deep);border:1px solid rgba(139,148,168,0.25);border-radius:16px;
+    padding:26px 30px;max-width:420px;width:88vw;text-align:center;}
+  #confirm .box b{font-family:var(--font-display);font-size:15px;letter-spacing:0.12em;color:var(--text);display:block;margin-bottom:8px;}
+  #confirm .box p{font-size:11.5px;color:var(--text-dim);margin-bottom:18px;line-height:1.5;}
+  #confirm .btns{display:flex;gap:10px;justify-content:center;}
+  button.cancelbtn,button.confirmbtn{
+    border:none;padding:8px 18px;border-radius:999px;font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;
+    cursor:pointer;font-weight:700;
+  }
+  button.cancelbtn{background:transparent;border:1px solid rgba(139,148,168,0.35);color:var(--text-dim);}
+  button.confirmbtn{background:var(--danger);color:#fff;box-shadow:0 0 20px rgba(255,77,109,0.35);}
+  button.confirmbtn:active{transform:scale(0.97);}
+
+  .mutebtn{background:transparent;border:none;color:var(--text-dim);font-size:13px;width:auto;padding:0 6px;cursor:pointer;}
+  .mutebtn.muted{color:var(--danger);}
+</style>
+</head>
+<body>
+
+<canvas id="stage"></canvas>
+
+<header id="chrome">
+  <div id="title-block">
+    <div class="appname">The Unmaking Engine</div>
+    <div class="descriptor">Starsilk / Experimental Instrument</div>
+  </div>
+  <div id="controls">
+    <div class="togglegroup" role="group" aria-label="Audio">
+      <b>sound</b>
+      <button class="mutebtn" id="muteBtn" aria-pressed="false" aria-label="Toggle sound">&#9635;</button>
+    </div>
+    <button class="controlbtn" id="autopsyBtn" aria-label="Open aftermath autopsy view">&#128219;</button>
+    <button class="resetbtn" id="resetBtn" aria-label="Reset the universe (requires confirmation)">Reset Universe</button>
+  </div>
+</header>
+
+<div id="instr" aria-live="polite" aria-atomic="true">
+  Find the filament
+  <small>Grip and pull to unmake.</small>
+</div>
+
+<div id="ledger" aria-label="Destruction ledger">
+  <div class="ledger-head" role="button" tabindex="0" id="ledgerHead" aria-describedby="ledgerBody" aria-expanded="true">
+    <span>Destruction Ledger</span>
+    <span class="tag" id="ledgerTag">0 / 5 collapsed</span>
+  </div>
+  <div id="ledgerBody" class="ledger-body">
+    <div class="stat-row"><b>Stars directly extracted</b><span class="v" id="cDirect">0</span></div>
+    <div class="stat-row"><b>Stars lost to chain reaction</b><span class="v" id="cChain">0</span></div>
+    <div class="stat-row"><b>Total collapsed stars</b><span class="v" id="cTotal">0</span> <span style="color:var(--text-dim);font-size:10px;">of 5</span></div>
+    <div class="stat-row"><b>Planets lost</b><span class="v" id="cPlanets">0</span></div>
+    <div class="stat-row"><b>Moons lost</b><span class="v" id="cMoons">0</span></div>
+    <div class="stat-row"><b>Intact systems</b><span class="v" id="cIntact">5</span></div>
+    <div class="stat-row"><b>Chain reactions</b><span class="v" id="cChainCount">0</span></div>
+    <div class="events" id="eventsPanel">
+      <b class="head">Event log</b>
+      <div id="eventsList"><div class="empty">Initial ledger &mdash; all zeros.</div></div>
+    </div>
+  </div>
+</div>
+
+<button id="ledger-toggle" aria-label="Show destruction ledger" aria-pressed="false">&#8801;</button>
+
+<div id="confirm">
+  <div class="box">
+    <b>Reset Universe</b>
+    <p>This reconstructs the original graph, restores all five intact stars, every orbiting body, and zeroes the ledger. This cannot be undone except by unmaking again.</p>
+    <div class="btns">
+      <button class="cancelbtn" id="resetCancel">Cancel</button>
+      <button class="confirmbtn" id="resetConfirm">Confirm Reset</button>
+    </div>
+  </div>
+</div>
+
+<div id="autopsy">
+  <div class="autopsy-head">
+    <h2 id="autopsyTitle">Aftermath / Autopsy</h2>
+    <button class="closebtn" id="autopsyClose">Close autopsy</button>
+  </div>
+  <div class="grid" id="autopsyGrid"></div>
+  <footer class="note">
+    The autopsy is subordinate to the instrument. It shows the pre-collapse inventory and final topology
+    &mdash; non-destructive, read-only. All values derive from the simulation object inventory.
+  </footer>
+</div>
+
+<script>
+/* ========================================================================
+   STARSILK: THE UNMAKING ENGINE
+   Single-file interactive application. Canvas 2D rendering, deterministic
+   simulation, event ledger, Web Audio synthesis, keyboard/touch/mouse input.
+   ======================================================================== */
+(function(){
+  'use strict';
+
+  // ------------------------------------------------------------------ Config
+  const CFG = {
+    pullThreshold: 150,
+    snapBackTime: 0.55,
+    collapseTime: 0.9,
+    chainDelayMin: 0.7,
+    chainDelayMax: 1.9,
+    stressPerCollapse: 34,
+    chainStressThreshold: 100,
+    starBaseRadius: 26,
+  };
+
+  // ------------------------------------------------------------------ Audio (Web Audio, gesture-initiated)
+  const Audio = (function(){
+    let ctx = null;
+    let muted = false;
+    let master = null;
+    let active = false;
+    let droneOsc = null, droneGain = null;
+    let tensOsc = null, tensGain = null;
+
+    function ensure(){
+      if(ctx) return ctx;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return null;
+      ctx = new AC();
+      master = ctx.createGain(); master.connect(ctx.destination); master.gain.value = muted?0:0.45;
+      return ctx;
+    }
+    function startDrone(){
+      if(!ctx || droneOsc) return;
+      droneOsc = ctx.createOscillator(); droneOsc.type = 'sine';
+      droneOsc.frequency.setValueAtTime(110, ctx.currentTime);
+      droneGain = ctx.createGain(); droneGain.gain.setValueAtTime(0.015, ctx.currentTime);
+      droneOsc.connect(droneGain); droneGain.connect(master);
+      droneOsc.start();
+    }
+    function stopDrone(){
+      if(droneGain){ try{droneGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.4);}catch(e){} droneGain=null; }
+      if(droneOsc){ try{droneOsc.stop();}catch(e){} droneOsc=null; }
+    }
+    return {
+      init(){ ensure(); return !!ctx; },
+      setMuted(m){ muted = !!m; if(master) master.gain.value = muted?0:0.45; },
+      isMuted(){ return muted; },
+      gesture(){
+        if(!ctx) return;
+        active = true;
+        if(ctx.state === 'suspended') ctx.resume();
+        startDrone();
+      },
+      tensionStart(){
+        if(muted || !ctx || !master || !active || tensOsc) return;
+        tensOsc = ctx.createOscillator(); tensOsc.type = 'sine';
+        tensGain = ctx.createGain();
+        tensOsc.connect(tensGain); tensGain.connect(master);
+        tensOsc.frequency.setValueAtTime(220, ctx.currentTime);
+        tensGain.gain.setValueAtTime(0.0, ctx.currentTime);
+        tensOsc.start();
+      },
+      tension(v){
+        if(muted || !ctx || !tensOsc || !tensGain || !active) return;
+        const t = ctx.currentTime;
+        tensOsc.frequency.setValueAtTime(220 + v * 700, t);
+        tensGain.gain.setValueAtTime(0.05 * v, t);
+      },
+      tensionEnd(){
+        if(tensGain){ try{tensGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.1);}catch(e){} tensGain=null; }
+        if(tensOsc){ try{tensOsc.stop();}catch(e){} tensOsc=null; }
+      },
+      collapse(){
+        if(muted || !ctx || !master || !active) return;
+        const t = ctx.currentTime;
+        const rum = ctx.createOscillator(); rum.type = 'sawtooth';
+        const rg = ctx.createGain();
+        rum.connect(rg); rg.connect(master);
+        rum.frequency.setValueAtTime(80, t);
+        rum.frequency.exponentialRampToValueAtTime(22, t + 0.5);
+        rg.gain.setValueAtTime(0.12, t);
+        rg.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+        rum.start(); rum.stop(t + 0.5);
+        const bufSize = ctx.sampleRate * 0.25;
+        const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for(let i=0;i<bufSize;i++) data[i] = (Math.random()*2-1);
+        const nb = ctx.createBufferSource(); nb.buffer = buf;
+        const ng = ctx.createGain();
+        nb.connect(ng); ng.connect(master);
+        ng.gain.setValueAtTime(0.18, t);
+        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        nb.start(); nb.stop(t + 0.25);
+      },
+      snap(){
+        if(muted || !ctx || !master || !active) return;
+        const t = ctx.currentTime;
+        const o = ctx.createOscillator(); o.type = 'square';
+        const g = ctx.createGain();
+        o.connect(g); g.connect(master);
+        o.frequency.setValueAtTime(340, t);
+        o.frequency.exponentialRampToValueAtTime(90, t + 0.1);
+        g.gain.setValueAtTime(0.06, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        o.start(); o.stop(t + 0.1);
+      }
+    };
+  })();
+
+  // ------------------------------------------------------------------ Simulation
+  function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+  function dist(a,b){const dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);}
+
+  const RAW_SYSTEMS = [
+    {id:'sys1',name:'SYSTEM I',cx:0.18,cy:0.30,hue:200,planets:[{r:56,speed:0.0006,size:5,color:'#9fb3d8'},{r:92,speed:0.00045,size:7,color:'#cfe3ff'}] ,moon:{planetIdx:0,r:17,size:3,color:'#b8c4d8'}},
+    {id:'sys2',name:'SYSTEM II',cx:0.82,cy:0.28,hue:235,planets:[{r:48,speed:0.0007,size:6,color:'#b3d4fc'},{r:78,speed:0.00052,size:5,color:'#a8c8f0'},{r:112,speed:0.00038,size:8,color:'#dbe7ff'}],moon:{planetIdx:2,r:22,size:4,color:'#c6dcfd'}},
+    {id:'sys3',name:'SYSTEM III',cx:0.50,cy:0.52,hue:190,planets:[{r:62,speed:0.00058,size:6,color:'#a9d2f2'},{r:104,speed:0.00044,size:7,color:'#bde0fe'}] ,moon:{planetIdx:1,r:19,size:3,color:'#cfe9ff'}},
+    {id:'sys4',name:'SYSTEM IV',cx:0.22,cy:0.72,hue:210,planets:[{r:44,speed:0.00066,size:5,color:'#c1dffd'},{r:72,speed:0.00049,size:6,color:'#a9cbf2'},{r:100,speed:0.00036,size:7,color:'#ccdafd'},{r:134,speed:0.00030,size:8,color:'#e2f0ff'}],moon:{planetIdx:3,r:26,size:4,color:'#d4e6fd'}},
+    {id:'sys5',name:'SYSTEM V',cx:0.78,cy:0.70,hue:185,planets:[{r:52,speed:0.00061,size:6,color:'#a9d6f5'},{r:90,speed:0.00047,size:7,color:'#bfe0fe'}],moon:{planetIdx:0,r:20,size:3,color:'#cbeaff'}},
+  ];
+
+  const EDGES = [
+    ['sys1','sys2'], ['sys2','sys5'], ['sys5','sys4'], ['sys4','sys3'], ['sys3','sys1'], ['sys3','sys5']
+  ];
+
+  const Sim = {
+    nodes: new Map(),
+    edges: [],
+    events: [],
+    time: 0,
+    directExtractions: 0,
+    chainCollapses: 0,
+    chainReactionCount: 0,
+
+    init(){
+      this.nodes.clear();
+      const W = window.innerWidth, H = window.innerHeight;
+      RAW_SYSTEMS.forEach(s=>{
+        const planets = s.planets.map((p,i)=>({
+          id: s.id + '-p' + i, system: s.id, idx: i,
+          r: p.r, speed: p.speed, size: p.size, color: p.color,
+          angle: Math.random() * Math.PI * 2,
+          alive: true
+        }));
+        let moon = null;
+        if(s.moon){
+          const p = planets[s.moon.planetIdx];
+          moon = {
+            id: s.id + '-m0', system: s.id, planet: p.id,
+            r: s.moon.r, size: s.moon.size, color: s.moon.color,
+            angle: Math.random() * Math.PI * 2, speed: p.speed * 1.4,
+            alive: true
+          };
+        }
+        this.nodes.set(s.id, {
+          id: s.id, name: s.name, cx: s.cx, cy: s.cy,
+          x: s.cx * W, y: s.cy * H,
+          hue: s.hue,
+          state: 'INTACT',
+          stress: 0,
+          collapseCause: null,
+          collapseSource: null,
+          planets, moon,
+          gripProgress: 0,
+          pulledBack: null,
+          angleOffset: 0,
+          collapseT: 0,
+          absenceRadius: 0
+        });
+      });
+      this.edges = EDGES.map(e=>({a:e[0],b:e[1],state:'intact'}));
+      this.events = [];
+      this.directExtractions = 0;
+      this.chainCollapses = 0;
+      this.chainReactionCount = 0;
+      this.time = 0;
+      this.log('system','The lattice stands intact. Five stars hold their silk.', []);
+    },
+
+    log(type, msg, detail){
+      this.events.unshift({t: performance.now(), type, msg, detail});
+      if(this.events.length > 200) this.events.pop();
+    },
+
+    counters(){
+      let planetsLost=0, moonsLost=0;
+      let intact=0, direct=0, chain=0;
+      this.nodes.forEach(n=>{
+        if(n.state === 'ABSENCE'){
+          if(n.collapseCause === 'direct') direct++;
+          else if(n.collapseCause === 'chain') chain++;
+          n.planets.forEach(p=>{ if(!p.alive) planetsLost++; });
+          if(n.moon && !n.moon.alive) moonsLost++;
+        } else intact++;
+      });
+      const total = direct + chain;
+      const origPlanets = RAW_SYSTEMS.reduce((a,s)=>a + s.planets.length,0);
+      const origMoons = RAW_SYSTEMS.filter(s=>s.moon).length;
+      return {direct, chain, total, planetsLost, moonsLost, intact,
+              origPlanets, origMoons, chainReactionCount: this.chainReactionCount};
+    },
+
+    hitTest(px, py){
+      let best = null, bestD = 1e9;
+      this.nodes.forEach(n=>{
+        if(n.state === 'ABSENCE') return;
+        const dStar = dist({x:px,y:py}, n);
+        const starRadius = CFG.starBaseRadius + 14;
+        if(dStar < starRadius && dStar < bestD){ bestD = dStar; best = {node:n, kind:'star', d:dStar}; }
+        this.edges.forEach(e=>{
+          // Only consider edges this node is actually an endpoint of.
+          let other = null;
+          if(e.a === n.id) other = this.nodes.get(e.b);
+          else if(e.b === n.id) other = this.nodes.get(e.a);
+          if(!other || other.state === 'ABSENCE' || n.state === 'ABSENCE') return;
+          const d = pointSegDist(px, py, n.x, n.y, other.x, other.y);
+          if(d < 20 && d < bestD){ bestD = d; best = {node:n, kind:'filament', d, edge:e, other}; }
+        });
+      });
+      return best;
+    },
+
+    commitCollapse(nodeId, cause, sourceId){
+      const n = this.nodes.get(nodeId);
+      if(n.state === 'ABSENCE') return false;
+      n.state = 'COLLAPSING';
+      n.collapseCause = cause;
+      n.collapseSource = sourceId;
+      n.collapseT = 0;
+      if(cause === 'direct'){ this.directExtractions++; Audio.collapse(); }
+      else { this.chainCollapses++; this.chainReactionCount++; Audio.collapse(); }
+
+      const planets = n.planets.filter(p=>p.alive).map(p=>p.id);
+      const moons = n.moon && n.moon.alive ? [n.moon.id] : [];
+      this.log(cause === 'direct' ? 'direct' : 'chain',
+        cause === 'direct' ? `${n.name} surrendered to direct extraction.` : `${n.name} surrendered to chain reaction from ${this.nodes.get(sourceId).name}.`,
+        {system: n.id, cause, source: sourceId, planets, moons});
+
+      this.edges.forEach(e=>{
+        const otherId = e.a === nodeId ? e.b : e.a;
+        const other = this.nodes.get(otherId);
+        if(other && other.state === 'INTACT'){
+          other.stress += CFG.stressPerCollapse;
+          if(other.stress >= CFG.chainStressThreshold){
+            const delay = CFG.chainDelayMin + Math.random() * (CFG.chainDelayMax - CFG.chainDelayMin);
+            setTimeout(()=>{
+              if(other.state === 'INTACT') this.commitCollapse(otherId, 'chain', nodeId);
+            }, delay * 1000);
+          }
+        }
+      });
+      return true;
+    },
+
+    completeCollapse(nodeId){
+      const n = this.nodes.get(nodeId);
+      n.state = 'ABSENCE';
+      n.collapseT = 1;
+      n.absenceRadius = CFG.starBaseRadius * 1.6;
+      n.planets.forEach(p=>{ p.alive = false; });
+      if(n.moon) n.moon.alive = false;
+      this.log('aftermath', `${n.name} is now an absence node.`, {system: n.id});
+      Audio.snap();
+    },
+
+    update(dt){
+      this.time += dt;
+      this.nodes.forEach(n=>{
+        if(n.state === 'INTACT' || n.state === 'GRIPPED'){
+          n.planets.forEach(p=>{
+            if(p.alive) p.angle += p.speed * dt * 60;
+          });
+        }
+        if(n.moon && n.moon.alive){
+          const p = n.planets.find(pp=>pp.id === n.moon.planet);
+          if(p && p.alive) n.moon.angle += n.moon.speed * dt * 60;
+        }
+        if(n.state === 'COLLAPSING'){
+          n.collapseT = clamp(n.collapseT + dt / CFG.collapseTime, 0, 1);
+          n.absenceRadius = CFG.starBaseRadius * (0.5 + 1.6 * n.collapseT);
+          if(n.collapseT >= 1) this.completeCollapse(n.id);
+        }
+        if(n.state === 'ABSENCE'){
+          n.absenceRadius = Math.min(n.absenceRadius + dt * 6, CFG.starBaseRadius * 3.2);
+        }
+        if(n.state === 'GRIPPED'){
+          n.angleOffset = Math.sin(this.time * 0.012) * 1.5;
+        } else if(n.state !== 'COLLAPSING'){
+          n.angleOffset = 0;
+        }
+      });
+    },
+
+    reset(){
+      this.init();
+    }
+  };
+
+  Sim.init();
+
+  // ------------------------------------------------------------------ Rendering
+  const canvas = document.getElementById('stage');
+  const ctx = canvas.getContext('2d', {alpha:false});
+  let W, H;
+  function resize(){ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; Sim.nodes.forEach(n=>{ n.x = n.cx * W; n.y = n.cy * H; }); }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function pointSegDist(px, py, x1, y1, x2, y2){
+    const dx = x2 - x1, dy = y2 - y1;
+    const len2 = dx*dx + dy*dy;
+    let t = ((px - x1)*dx + (py - y1)*dy) / len2;
+    t = clamp(t, 0, 1);
+    const closestX = x1 + t * dx, closestY = y1 + t * dy;
+    return Math.hypot(px - closestX, py - closestY);
+  }
+
+  function gradStar(x, y, r, hue, alive){
+    const g = ctx.createRadialGradient(x, y, r * 0.12, x, y, r * 1.15);
+    if(alive){
+      g.addColorStop(0, '#ffffff');
+      g.addColorStop(0.28, `hsla(${hue}, 70%, 55%, 0.9)`);
+      g.addColorStop(0.6, `hsla(${hue}, 60%, 30%, 0.55)`);
+      g.addColorStop(1, `hsla(${hue}, 50%, 10%, 0)`);
+    } else {
+      g.addColorStop(0, '#1a1a24');
+      g.addColorStop(0.5, '#0c0c12');
+      g.addColorStop(1, '#020204');
+    }
+    return g;
+  }
+
+  function drawStar(n, t){
+    const r = CFG.starBaseRadius;
+    const ox = Math.sin(t * 0.003) * n.angleOffset;
+    // outer atmospheric glow
+    ctx.save();
+    ctx.translate(n.x + ox, n.y);
+    ctx.fillStyle = gradStar(n.x, n.y, r * 2.6, n.hue, n.state !== 'ABSENCE');
+    ctx.beginPath(); ctx.arc(0, 0, r * 2.6, 0, Math.PI*2); ctx.fill();
+    const layers = 3;
+    for(let i=0;i<layers;i++){
+      const lr = r * (0.78 - i * 0.22);
+      ctx.strokeStyle = `hsla(${n.hue}, 70%, 65%, ${0.35 - i * 0.08})`;
+      ctx.lineWidth = 2 - i * 0.5;
+      ctx.beginPath(); ctx.arc(0, 0, lr, 0, Math.PI*2); ctx.stroke();
+    }
+    ctx.fillStyle = gradStar(n.x, n.y, r, n.hue, true);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath(); ctx.arc(-r*0.28, -r*0.28, r*0.3, 0, Math.PI*2); ctx.fill();
+    if(n.state === 'GRIPPED'){
+      ctx.strokeStyle = 'rgba(0,212,255,0.45)'; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      for(let k=0;k<5;k++){
+        const a = (k/5) * Math.PI * 2 + t*0.002;
+        ctx.moveTo(Math.cos(a)*r*0.5, Math.sin(a)*r*0.5);
+        ctx.lineTo(Math.cos(a)*r*1.05, Math.sin(a)*r*1.05);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawOrbits(n, t){
+    if(n.state === 'ABSENCE') return;
+    ctx.save(); ctx.translate(n.x, n.y);
+    n.planets.forEach(p=>{
+      if(!p.alive) return;
+      ctx.strokeStyle = 'rgba(139,148,168,0.16)';
+      ctx.lineWidth = 1; ctx.setLineDash([6, 10]); ctx.lineDashOffset = -t * 20;
+      ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(Math.cos(p.angle)*p.r, Math.sin(p.angle)*p.r, p.size, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.beginPath(); ctx.arc(Math.cos(p.angle)*p.r - p.size*0.35, Math.sin(p.angle)*p.r - p.size*0.35, p.size*0.3, 0, Math.PI*2); ctx.fill();
+    });
+    if(n.moon && n.moon.alive){
+      const p = n.planets.find(pp=>pp.id === n.moon.planet);
+      if(p && p.alive){
+        ctx.strokeStyle = 'rgba(139,148,168,0.12)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.arc(Math.cos(p.angle)*p.r, Math.sin(p.angle)*p.r, n.moon.r, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.fillStyle = n.moon.color;
+        ctx.beginPath();
+        ctx.arc(Math.cos(p.angle)*p.r + Math.cos(n.moon.angle)*n.moon.r,
+                Math.sin(p.angle)*p.r + Math.sin(n.moon.angle)*n.moon.r, n.moon.size, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawFilament(a, b, gripped, pullOffset, tension){
+    if(a.state === 'ABSENCE' || b.state === 'ABSENCE') return;
+    ctx.save();
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    const ux = dx / len, uy = dy / len;
+    const ang = Math.atan2(dy, dx);
+
+    let midX = (a.x+b.x)/2, midY = (a.y+b.y)/2;
+    if(gripped && pullOffset){
+      midX = a.x + pullOffset.x * 0.45;
+      midY = a.y + pullOffset.y * 0.45;
+    }
+
+    ctx.translate(midX, midY);
+    ctx.rotate(ang);
+
+    const baseW = 9 + tension * 14;
+    const pulse = Math.sin(Date.now() * 0.015) * (1 + tension * 0.5);
+
+    ctx.strokeStyle = `rgba(0,212,255,${0.18 + tension*0.25})`;
+    ctx.lineWidth = baseW * 1.9 + pulse;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(-len/2, 0); ctx.lineTo(len/2, 0); ctx.stroke();
+
+    ctx.strokeStyle = `rgba(0,212,255,0.92)`;
+    ctx.lineWidth = baseW;
+    ctx.beginPath(); ctx.moveTo(-len/2, 0); ctx.lineTo(len/2, 0); ctx.stroke();
+
+    const barCount = Math.max(4, Math.floor(len / 24));
+    for(let i=0;i<barCount;i++){
+      const x = -len/2 + (i / barCount) * len;
+      const barW = baseW * (0.62 + 0.28 * Math.sin(i * 1.7 + Date.now() * 0.004));
+      const gap = baseW * 0.22;
+      ctx.strokeStyle = `rgba(11,110,245,${0.9 - (i%3)*0.18})`;
+      ctx.lineWidth = barW;
+      ctx.beginPath(); ctx.moveTo(x - gap/2, 0); ctx.lineTo(x + gap/2, 0); ctx.stroke();
+    }
+
+    ctx.strokeStyle = `rgba(0,212,255,0.55)`;
+    ctx.lineWidth = baseW * 0.6;
+    ctx.beginPath(); ctx.moveTo(-len/2, 0); ctx.lineTo(-len/2 + 12, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(len/2, 0); ctx.lineTo(len/2 - 12, 0); ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawAbsence(n, t){
+    const r = n.absenceRadius;
+    ctx.save();
+    const g = ctx.createRadialGradient(n.x, n.y, r*0.25, n.x, n.y, r);
+    g.addColorStop(0, '#030305');
+    g.addColorStop(0.55, '#07070a');
+    g.addColorStop(1, '#020204');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI*2); ctx.fill();
+    const lg = ctx.createRadialGradient(n.x, n.y, r, n.x, n.y, r * 1.5);
+    lg.addColorStop(0, 'rgba(42,42,58,0.55)');
+    lg.addColorStop(0.6, 'rgba(42,42,58,0.15)');
+    lg.addColorStop(1, 'rgba(42,42,58,0)');
+    ctx.fillStyle = lg;
+    ctx.beginPath(); ctx.arc(n.x, n.y, r * 1.5, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = 'rgba(139,148,168,0.12)';
+    ctx.lineWidth = 1.4;
+    for(let k=0;k<6;k++){
+      const a = (k/6)*Math.PI*2 + t*0.0015;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r*1.12, a, a + 0.7); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawAbsenceSpan(a, b, t){
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    const ux = dx/len, uy = dy/len;
+    const ang = Math.atan2(dy, dx);
+    const midX = (a.x+b.x)/2, midY = (a.y+b.y)/2;
+    ctx.save();
+    ctx.translate(midX, midY); ctx.rotate(ang);
+    ctx.fillStyle = 'rgba(10,10,14,0.85)';
+    ctx.beginPath();
+    ctx.moveTo(-len/2 - 10, -14); ctx.lineTo(len/2 + 10, -14);
+    ctx.lineTo(len/2 + 10, 14); ctx.lineTo(-len/2 - 10, 14); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(74,74,96,0.4)';
+    ctx.lineWidth = 1.2;
+    for(let side of [-1,1]){
+      ctx.beginPath();
+      for(let i=0;i<=12;i++){
+        const x = -len/2 + (i/12)*len;
+        const off = Math.sin((i/12)*Math.PI*3 + t*0.002) * 6 * side;
+        if(i===0) ctx.moveTo(x, off);
+        else ctx.lineTo(x, off);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawTension(n, progress){
+    if(progress <= 0) return;
+    ctx.save(); ctx.translate(n.x, n.y);
+    const r = CFG.starBaseRadius + 16;
+    ctx.strokeStyle = 'rgba(0,212,255,0.85)';
+    ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(0,0,r, -Math.PI/2, -Math.PI/2 + Math.PI*2*progress);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ------------------------------------------------------------------ Input state
+  const Input = {
+    active: false,
+    nodeId: null,
+    kind: null,
+    start: {x:0,y:0},
+    cur: {x:0,y:0},
+    anchor: {x:0,y:0},
+    pull: {x:0,y:0},
+    thresholdMet: false
+  };
+
+  function startGrip(target, px, py){
+    if(Input.active) return;
+    const n = target.node;
+    if(n.state === 'ABSENCE') return;
+    Audio.gesture();
+    Audio.tensionStart();
+    Input.active = true;
+    Input.nodeId = n.id;
+    Input.kind = target.kind;
+    Input.start = {x:px,y:py};
+    Input.cur = {x:px,y:py};
+    Input.anchor = {x:n.x,y:n.y};
+    Input.pull = {x:0,y:0};
+    Input.thresholdMet = false;
+    n.state = 'GRIPPED';
+    n.gripProgress = 0;
+    setInstruction('Grip and pull', 'Hold beyond the threshold to unmake the star.');
+    srAnnounce(`Gripping ${n.name}. Hold to extract.`);
+    updateKFilament();
+  }
+
+  function moveGrip(px, py){
+    if(!Input.active) return;
+    Input.cur = {x:px,y:py};
+    const n = Sim.nodes.get(Input.nodeId);
+    const dx = px - n.x, dy = py - n.y;
+    const d = Math.hypot(dx, dy);
+    Input.pull = {x:dx,y:dy};
+    const progress = clamp(d / CFG.pullThreshold, 0, 1);
+    n.gripProgress = progress;
+    n.angleOffset = Math.min(d * 0.015, 6);
+    Audio.tension(progress);
+
+    if(d >= CFG.pullThreshold && !Input.thresholdMet){
+      Input.thresholdMet = true;
+      Audio.tensionEnd();
+      Audio.collapse();
+      Sim.commitCollapse(n.id, 'direct', null);
+      setInstruction('Witness the surrender.', 'The star collapses inward. Absence spreads.');
+      srAnnounce(`${n.name} surrendered to direct extraction.`);
+    }
+    updateKFilament();
+  }
+
+  function cancelGrip(){
+    if(!Input.active) return;
+    const n = Sim.nodes.get(Input.nodeId);
+    n.state = 'INTACT';
+    n.gripProgress = 0;
+    n.angleOffset = 0;
+    Audio.tensionEnd();
+    Audio.snap();
+    Input.active = false;
+    setInstruction('Find the filament', 'Release before the threshold returns the strand.');
+    srAnnounce('Extraction cancelled. The strand returns.');
+    updateKFilament();
+  }
+
+  function commitGrip(){
+    if(!Input.active) return;
+    const n = Sim.nodes.get(Input.nodeId);
+    if(!Input.thresholdMet){
+      cancelGrip();
+      return;
+    }
+    Input.active = false;
+    Audio.tensionEnd();
+    updateKFilament();
+  }
+
+  // ------------------------------------------------------------------ Keyboard equivalent
+  const kContainer = document.createElement('div');
+  kContainer.style.position = 'absolute'; kContainer.style.pointerEvents = 'none';
+  kContainer.style.left = '0'; kContainer.style.top = '0';
+  kContainer.style.width = '100vw'; kContainer.style.height = '100vh';
+  document.body.appendChild(kContainer);
+
+  const kfEls = {};
+  RAW_SYSTEMS.forEach(s=>{
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'kfilament';
+    el.id = 'kf-' + s.id;
+    el.setAttribute('aria-label', `Grip ${s.name} filament`);
+    el.setAttribute('aria-roledescription', 'Starsilk filament');
+    el.tabIndex = 0;
+    el.addEventListener('keydown', (ev)=>{
+      if(ev.key === 'Enter' || ev.key === ' '){
+        ev.preventDefault();
+        const n = Sim.nodes.get(s.id);
+        if(n.state === 'ABSENCE') return;
+        startKeyboardPull(n, el);
+      }
+    });
+    kContainer.appendChild(el);
+    kfEls[s.id] = el;
+  });
+
+  let kbPull = null;
+  function startKeyboardPull(n, el){
+    if(kbPull) return;
+    Audio.gesture();
+    Audio.tensionStart();
+    n.state = 'GRIPPED'; n.gripProgress = 0;
+    el.classList.add('gripped');
+    setInstruction('Hold to confirm extraction', 'Release to cancel before the threshold.');
+    srAnnounce(`Gripping ${n.name}. Hold to confirm extraction.`);
+    const start = performance.now();
+    function frame(now){
+      if(!kbPull || kbPull.node.id !== n.id){ kbPull = null; n.state='INTACT'; n.gripProgress=0; el.classList.remove('gripped'); updateKFilament(); return; }
+      const elapsed = (now - start) / 1000;
+      const progress = clamp(elapsed / 1.6, 0, 1);
+      n.gripProgress = progress;
+      Audio.tension(progress);
+      if(progress >= 1){
+        Audio.tensionEnd();
+        Audio.collapse();
+        Sim.commitCollapse(n.id, 'direct', null);
+        kbPull = null;
+        n.state = 'COLLAPSING';
+        el.classList.remove('gripped');
+        setInstruction('Witness the surrender.', 'The star collapses inward.');
+        srAnnounce(`${n.name} surrendered to keyboard extraction.`);
+        updateKFilament();
+        return;
+      }
+      kbPull.raf = requestAnimationFrame(frame);
+    }
+    kbPull = {node:n, el, raf: requestAnimationFrame(frame)};
+  }
+  function cancelKeyboardPull(){
+    if(!kbPull) return;
+    const n = kbPull.node;
+    n.state = 'INTACT'; n.gripProgress = 0;
+    if(kbPull.el) kbPull.el.classList.remove('gripped');
+    cancelAnimationFrame(kbPull.raf);
+    kbPull = null;
+    Audio.tensionEnd();
+    Audio.snap();
+    setInstruction('Find the filament', 'Keyboard extraction cancelled.');
+    srAnnounce('Keyboard extraction cancelled.');
+    updateKFilament();
+  }
+  document.addEventListener('keydown', (ev)=>{
+    if(ev.key === 'Escape'){
+      cancelKeyboardPull();
+      if(Input.active) cancelGrip();
+    }
+  });
+
+  function updateKFilament(){
+    RAW_SYSTEMS.forEach(s=>{
+      const el = kfEls[s.id];
+      const n = Sim.nodes.get(s.id);
+      if(n.state === 'ABSENCE'){ el.style.display = 'none'; return; }
+      el.style.display = 'flex';
+      el.style.left = (n.x - 22) + 'px';
+      el.style.top = (n.y - 22) + 'px';
+      el.style.width = '44px'; el.style.height = '44px';
+      el.style.background = n.state === 'GRIPPED' ? 'rgba(255,255,255,0.12)' : 'rgba(0,212,255,0.06)';
+      el.classList.toggle('gripped', n.state === 'GRIPPED');
+    });
+  }
+
+  // ------------------------------------------------------------------ UI
+  const els = {
+    cDirect: document.getElementById('cDirect'),
+    cChain: document.getElementById('cChain'),
+    cTotal: document.getElementById('cTotal'),
+    cPlanets: document.getElementById('cPlanets'),
+    cMoons: document.getElementById('cMoons'),
+    cIntact: document.getElementById('cIntact'),
+    cChainCount: document.getElementById('cChainCount'),
+    ledgerTag: document.getElementById('ledgerTag'),
+    eventsList: document.getElementById('eventsList'),
+    muteBtn: document.getElementById('muteBtn'),
+    instr: document.getElementById('instr')
+  };
+  let lastEventLen = 0;
+
+  function setInstruction(main, sub){
+    const node = els.instr.childNodes[0];
+    if(node) node.textContent = main + ' ';
+    const small = els.instr.querySelector('small');
+    if(small) small.textContent = sub;
+    els.instr.classList.add('visible');
+    setTimeout(()=> els.instr.classList.remove('visible'), 3000);
+  }
+
+  function srAnnounce(msg){
+    const sr = document.getElementById('sr-live');
+    sr.textContent = '';
+    void sr.offsetHeight;
+    sr.textContent = msg;
+  }
+
+  function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));}
+
+  function updateLedger(){
+    const c = Sim.counters();
+    els.cDirect.textContent = c.direct;
+    els.cChain.textContent = c.chain;
+    els.cTotal.textContent = c.total;
+    els.cPlanets.textContent = c.planetsLost;
+    els.cMoons.textContent = c.moonsLost;
+    els.cIntact.textContent = c.intact;
+    els.cChainCount.textContent = c.chainReactionCount;
+    els.ledgerTag.textContent = c.total + ' / 5 collapsed';
+
+    const frag = document.createDocumentFragment();
+    let has = false;
+    Sim.events.slice().reverse().forEach(ev=>{
+      if(ev.type === 'system') return;
+      has = true;
+      const div = document.createElement('div');
+      div.className = 'event ' + (ev.type === 'chain' ? 'chain' : '');
+      const when = new Date(ev.t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      div.innerHTML = `<span style="color:var(--text-dim);font-size:9.5px;">${when}</span> ` +
+        `<span class="who">${escapeHtml(ev.msg)}</span>`;
+      if(ev.detail && (ev.detail.planets && ev.detail.planets.length || ev.detail.moons && ev.detail.moons.length)){
+        const lost = [...(ev.detail.planets||[]).map(p=>`<span class="gone">- ${escapeHtml(p)}</span>`),
+                      ...(ev.detail.moons||[]).map(m=>`<span class="gone">- ${escapeHtml(m)} moon</span>`)].join(' ');
+        div.innerHTML += `<span class="lost">${lost}</span>`;
+      }
+      frag.appendChild(div);
+    });
+    if(Sim.events.length !== lastEventLen){
+      lastEventLen = Sim.events.length;
+      if(!has){
+        els.eventsList.innerHTML = '<div class="empty">Initial ledger &mdash; all zeros.</div>';
+      } else {
+        els.eventsList.innerHTML = '';
+        els.eventsList.appendChild(frag);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------ Autopsy
+  const autopsyEl = document.getElementById('autopsy');
+  const autopsyGrid = document.getElementById('autopsyGrid');
+  document.getElementById('autopsyBtn').addEventListener('click', ()=>{
+    buildAutopsy();
+    autopsyEl.style.display = 'flex';
+  });
+  document.getElementById('autopsyClose').addEventListener('click', ()=>{
+    autopsyEl.style.display = 'none';
+  });
+  function buildAutopsy(){
+    const c = Sim.counters();
+    autopsyGrid.innerHTML = '';
+    const inv = document.createElement('div'); inv.className='card';
+    inv.innerHTML = `<h3>Original inventory</h3><ul>
+      <li><b>Systems:</b> 5 intact</li>
+      <li><b>Stars:</b> 5</li>
+      <li><b>Planets:</b> ${c.origPlanets}</li>
+      <li><b>Moons/orbital:</b> ${c.origMoons}</li>
+    </ul>`;
+    autopsyGrid.appendChild(inv);
+    RAW_SYSTEMS.forEach(s=>{
+      const n = Sim.nodes.get(s.id);
+      const card = document.createElement('div'); card.className='card';
+      const planetsHtml = s.planets.map((p,i)=>{
+        const pp = n.planets.find(x=>x.id===s.id+'-p'+i);
+        return `<li>Planet ${i+1} &mdash; ${pp && pp.alive ? '<span class="intact">intact</span>' : '<span class="gone">lost</span>'}</li>`;
+      }).join('');
+      const moonHtml = s.moon ? `<li>Moon &mdash; ${(n.moon && n.moon.alive) ? '<span class="intact">intact</span>' : '<span class="gone">lost</span>'}</li>` : '';
+      card.innerHTML = `<h3>${escapeHtml(n.name)} &mdash; <span style="color:${n.state==='ABSENCE'?'var(--danger)':'var(--ok)'}">${n.state === 'ABSENCE' ? 'ABSENCE' : 'INTACT'}</span></h3>
+        <ul>${planetsHtml}${moonHtml}</ul>`;
+      autopsyGrid.appendChild(card);
+    });
+    const topo = document.createElement('div'); topo.className='card';
+    topo.innerHTML = `<h3>Connection topology</h3><ul>`;
+    Sim.edges.forEach(e=>{
+      const na = Sim.nodes.get(e.a), nb = Sim.nodes.get(e.b);
+      const bothAbsent = na.state === 'ABSENCE' && nb.state === 'ABSENCE';
+      topo.innerHTML += `<li>${escapeHtml(na.name)} &harr; ${escapeHtml(nb.name)} &mdash; ${bothAbsent ? '<span class="gone">absence span</span>' : '<span class="intact">linked</span>'}</li>`;
+    });
+    topo.innerHTML += '</ul>';
+    autopsyGrid.appendChild(topo);
+    document.getElementById('autopsyTitle').textContent = `Aftermath / Autopsy &mdash; ${c.total} / 5 collapsed`;
+  }
+
+  // ------------------------------------------------------------------ Reset
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    document.getElementById('confirm').style.display = 'flex';
+  });
+  document.getElementById('resetCancel').addEventListener('click', ()=>{
+    document.getElementById('confirm').style.display = 'none';
+  });
+  document.getElementById('resetConfirm').addEventListener('click', ()=>{
+    document.getElementById('confirm').style.display = 'none';
+    cancelKeyboardPull();
+    if(Input.active) cancelGrip();
+    Sim.reset();
+    updateLedger();
+    buildAutopsy();
+    setInstruction('Universe reset.', 'Five intact stars restored. Ledger zeroed.');
+    srAnnounce('Universe reset. All five systems restored. Ledger zeroed.');
+  });
+
+  document.getElementById('muteBtn').addEventListener('click', ()=>{
+    const m = !Audio.isMuted();
+    Audio.setMuted(m);
+    document.getElementById('muteBtn').textContent = m ? '&#128263;' : '&#9635;';
+    document.getElementById('muteBtn').ariaPressed = m;
+    document.getElementById('muteBtn').classList.toggle('muted', m);
+    document.getElementById('muteBtn').setAttribute('aria-label', m ? 'Unmute sound' : 'Mute sound');
+  });
+
+  const ledgerEl = document.getElementById('ledger');
+  const toggle = document.getElementById('ledger-toggle');
+  let ledgerOpen = true;
+  toggle.addEventListener('click', ()=>{
+    ledgerOpen = !ledgerOpen;
+    if(window.innerWidth <= 640){
+      toggle.classList.toggle('shown', ledgerOpen);
+      ledgerEl.style.display = ledgerOpen ? 'block' : 'none';
+      toggle.setAttribute('aria-pressed', ledgerOpen);
+      toggle.setAttribute('aria-label', ledgerOpen ? 'Hide destruction ledger' : 'Show destruction ledger');
+    }
+  });
+  document.getElementById('ledgerHead').addEventListener('click', ()=>{
+    const body = document.getElementById('ledgerBody');
+    const collapsed = body.style.display === 'none';
+    body.style.display = collapsed ? '' : 'none';
+    document.getElementById('ledgerHead').setAttribute('aria-expanded', collapsed);
+  });
+
+  // ------------------------------------------------------------------ Pointer input
+  function getPos(ev){
+    if(ev.touches && ev.touches.length){ return {x:ev.touches[0].clientX, y:ev.touches[0].clientY}; }
+    if(ev.changedTouches && ev.changedTouches.length){ return {x:ev.changedTouches[0].clientX, y:ev.changedTouches[0].clientY}; }
+    return {x:ev.clientX, y:ev.clientY};
+  }
+  canvas.addEventListener('mousedown', ev=>{
+    const p = getPos(ev);
+    const target = Sim.hitTest(p.x, p.y);
+    if(target) startGrip(target, p.x, p.y);
+  });
+  canvas.addEventListener('touchstart', ev=>{
+    const p = getPos(ev);
+    const target = Sim.hitTest(p.x, p.y);
+    if(target) startGrip(target, p.x, p.y);
+  }, {passive:false});
+  window.addEventListener('mousemove', ev=>{
+    if(Input.active){ moveGrip(ev.clientX, ev.clientY); }
+  });
+  window.addEventListener('touchmove', ev=>{
+    if(Input.active){
+      ev.preventDefault();
+      const p = getPos(ev);
+      moveGrip(p.x, p.y);
+    }
+  }, {passive:false});
+  window.addEventListener('mouseup', ()=>{ commitGrip(); });
+  window.addEventListener('touchend', ()=>{ commitGrip(); });
+  window.addEventListener('touchcancel', ()=>{ cancelGrip(); });
+
+  // ------------------------------------------------------------------ Render loop
+  let last = performance.now();
+  function frame(now){
+    const dt = (now - last) / 1000;
+    last = now;
+    Sim.update(dt);
+
+    ctx.clearRect(0, 0, W, H);
+
+    Sim.edges.forEach(e=>{
+      const na = Sim.nodes.get(e.a), nb = Sim.nodes.get(e.b);
+      if(na.state === 'ABSENCE' && nb.state === 'ABSENCE') drawAbsenceSpan(na, nb, now);
+    });
+
+    Sim.edges.forEach(e=>{
+      const na = Sim.nodes.get(e.a), nb = Sim.nodes.get(e.b);
+      if(na.state === 'ABSENCE' || nb.state === 'ABSENCE') return;
+      const pulled = Input.active && (Input.nodeId === na.id || Input.nodeId === nb.id);
+      let pullOffset = null;
+      let tension = 0;
+      if(pulled){
+        pullOffset = Input.pull;
+        tension = Math.hypot(Input.pull.x, Input.pull.y) / CFG.pullThreshold;
+      }
+      drawFilament(na, nb, pulled, pullOffset, clamp(tension,0,1));
+    });
+
+    Sim.nodes.forEach(n=>{
+      drawOrbits(n, now);
+      if(n.state === 'ABSENCE') drawAbsence(n, now);
+      else drawStar(n, now);
+    });
+
+    if(Input.active){
+      const n = Sim.nodes.get(Input.nodeId);
+      drawTension(n, n.gripProgress);
+    }
+
+    updateKFilament();
+
+    if(Input.active){
+      const n = Sim.nodes.get(Input.nodeId);
+      ctx.save();
+      ctx.translate(n.x, n.y);
+      const ang = Math.atan2(Input.cur.y - n.y, Input.cur.x - n.x);
+      ctx.rotate(ang);
+      const d = Math.hypot(Input.cur.x - n.x, Input.cur.y - n.y);
+      ctx.strokeStyle = 'rgba(0,212,255,0.35)';
+      ctx.lineWidth = 2; ctx.setLineDash([8,6]);
+      ctx.beginPath(); ctx.moveTo(CFG.starBaseRadius+4, 0); ctx.lineTo(Math.min(d, CFG.pullThreshold*1.2)-6, 0); ctx.stroke(); ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    updateLedger();
+    requestAnimationFrame(frame);
+  }
+
+  // Expose sim for external inspection/testing (read-only).
+  window.__DBG = { Sim, CFG, Audio, Input };
+
+  requestAnimationFrame(frame);
+
+  setInstruction('Find the filament', 'Hover or focus a star to reveal its graspable azure strand.');
+  updateLedger();
+
+})();
+</script>
+</body>
+</html>
