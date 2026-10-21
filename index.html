@@ -5,25 +5,49 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Starsilk: The Unmaking Engine</title>
 <meta name="description" content="An interactive cosmic destruction instrument — pull a strand of Starsilk and witness a star surrender.">
+<link rel="preload" as="font" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=Space+Grotesk:wght@300;500;700&display=swap" crossorigin>
 <style>
+  /* ========================================================================
+     COSMIC SACRILEGE — PREMIUM VISUAL SYSTEM
+     Art direction: ink-deep void, luminous stellar cores, delicate orbital
+     engraving, architectural geometry, azure Starsilk ribbons with barcode
+     syntax. Mythic cosmology as an interactive scientific instrument.
+     ======================================================================== */
   :root{
-    --void:#040408;
-    --void-deep:#020204;
+    /* Void palette */
+    --void:#030306;
+    --void-deep:#010102;
+    --void-mid:#07070c;
     --ink:#0a0a12;
+    /* Starsilk azure */
     --azure:#00d4ff;
     --azure-deep:#0b6ef5;
     --azure-dim:#1e4a8a;
     --azure-glow:rgba(0,212,255,0.35);
+    --azure-soft:rgba(0,212,255,0.12);
+    /* Absence / negative space */
     --absence:#0d0d14;
     --absence-edge:#2a2a3a;
     --lens:#161626;
+    /* Text */
     --text:#e8eef7;
     --text-dim:#8b94a8;
+    --text-soft:#4b5263;
+    /* Accent */
     --danger:#ff4d6d;
+    --danger-glow:rgba(255,77,109,0.35);
     --ok:#7ee8a7;
     --gold:#f2b84b;
-    --font-display:'Ironfall', 'Segoe UI', system-ui, sans-serif;
-    --font-body:'Inter', system-ui, sans-serif;
+    /* Typography */
+    --font-display:'Space Grotesk','Segoe UI',system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono','Menlo',monospace;
+    --font-body:'Inter','Segoe UI',system-ui,sans-serif;
+    /* Layout */
+    --ui-z:50;
+    --instr-z:60;
+    --ledger-z:55;
+    --kbd-z:45;
+    --modal-z:80;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;}
@@ -33,191 +57,330 @@
     font-family:var(--font-body);
     overflow:hidden;
     touch-action:none;
+    -webkit-font-smoothing:antialiased;
   }
-  canvas#stage{display:block;width:100vw;height:100vh;background:radial-gradient(circle at 50% 40%, #0c0c16 0%, var(--void-deep) 55%, var(--void) 100%);}
+  canvas#stage{
+    display:block;
+    width:100vw;
+    height:100vh;
+    background:radial-gradient(circle at 50% 38%, #0b0b14 0%, #040408 45%, var(--void-deep) 100%);
+  }
 
-  /* ---------- Chrome / UI ---------- */
+  /* ========================================================================
+     VIGNETTE — always-on depth frame
+     ======================================================================== */
+  #vignette{
+    position:fixed;inset:0;z-index:48;pointer-events:none;
+    background:radial-gradient(circle at 50% 42%, transparent 30%, rgba(0,0,0,0.42) 85%, rgba(0,0,0,0.62) 100%);
+    mix-blend-mode:multiply;
+  }
+
+  /* ========================================================================
+     CHROME / HEADER
+     ======================================================================== */
   header#chrome{
     position:absolute;top:0;left:0;right:0;
     height:56px;
     display:flex;align-items:center;justify-content:space-between;
     padding:0 20px;
-    z-index:50;
-    background:linear-gradient(180deg, rgba(4,4,8,0.82) 0%, rgba(2,2,4,0.45) 100%);
-    backdrop-filter:blur(10px) saturate(1.1);
-    border-bottom:1px solid rgba(0,212,255,0.14);
-    box-shadow:0 4px 20px rgba(0,0,0,0.55);
+    z-index:var(--ui-z);
+    background:linear-gradient(180deg, rgba(4,4,8,0.78) 0%, rgba(2,2,4,0.42) 100%);
+    backdrop-filter:blur(12px) saturate(1.15);
+    border-bottom:1px solid rgba(0,212,255,0.16);
+    box-shadow:0 6px 24px rgba(0,0,0,0.6);
   }
-  #title-block{display:flex;flex-direction:column;line-height:1.05;}
+  #title-block{display:flex;flex-direction:column;line-height:1.02;}
   #title-block .appname{
-    font-family:var(--font-display);font-weight:900;letter-spacing:0.42em;font-size:17px;
+    font-family:var(--font-display);font-weight:700;letter-spacing:0.48em;font-size:17px;
     color:var(--azure);text-transform:uppercase;
     display:inline-block;
     text-shadow:
-      -1px -1px 0 rgba(11,110,245,0.55),
-       1px  1px 0 rgba(2,2,4,0.85),
-       0 0 26px rgba(0,212,255,0.22);
+      -1px -1px 0 rgba(11,110,245,0.5),
+       1px  1px 0 rgba(1,1,2,0.8),
+       0 0 30px rgba(0,212,255,0.28);
     position:relative;
   }
   #title-block .appname::before{
     content:'';
-    position:absolute;inset:0;left:-1.2em;top:50%;
-    transform:translatey(-50%) scalex(0.85);
-    border-left:2px solid rgba(0,212,255,0.45);
-    opacity:0.6;
+    position:absolute;inset:0;left:-1.35em;top:50%;
+    transform:translatey(-50%) scalex(0.88);
+    border-left:2px solid rgba(0,212,255,0.5);
+    opacity:0.65;
   }
   #title-block .descriptor{
-    font-size:9.5px;letter-spacing:0.32em;color:var(--text-dim);text-transform:uppercase;
-    opacity:0.85;white-space:nowrap;transform:translatex(1px);
+    font-family:var(--font-mono);font-size:8px;letter-spacing:0.3em;color:var(--text-dim);
+    text-transform:uppercase;opacity:0.8;white-space:nowrap;transform:translatex(1px);
+    margin-top:2px;
   }
-  #controls{display:flex;align-items:center;gap:14px;white-space:nowrap;}
-  .togglegroup{display:flex;align-items:center;gap:8px;border:1px solid rgba(139,148,168,0.25);
-    background:rgba(4,4,8,0.55);border-radius:999px;padding:3px 10px;}
-  .togglegroup b{font-size:9.5px;letter-spacing:0.18em;color:var(--text-dim);text-transform:uppercase;}
+  #controls{display:flex;align-items:center;gap:12px;white-space:nowrap;}
+  .togglegroup{
+    display:flex;align-items:center;gap:6px;
+    border:1px solid rgba(139,148,168,0.22);
+    background:rgba(4,4,8,0.5);border-radius:999px;padding:4px 11px;
+  }
+  .togglegroup b{
+    font-family:var(--font-mono);font-size:8px;letter-spacing:0.2em;color:var(--text-dim);
+    text-transform:uppercase;
+  }
   button.resetbtn{
-    background:transparent;border:1px solid rgba(139,148,168,0.35);color:var(--text);
-    font-size:11px;letter-spacing:0.14em;text-transform:uppercase;padding:6px 14px;border-radius:999px;
-    cursor:pointer;transition:transform .1s,border-color .2s,color .2s;
+    background:transparent;
+    border:1px solid rgba(139,148,168,0.3);
+    color:var(--text);
+    font-family:var(--font-display);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;
+    padding:7px 16px;border-radius:999px;
+    cursor:pointer;
+    transition:transform .08s,border-color .2s,color .2s,box-shadow .2s;
+    box-shadow:0 0 0 rgba(0,212,255,0);
   }
-  button.resetbtn:hover{border-color:var(--text);color:#fff;}
-  button.resetbtn:active{transform:scale(0.97);}
+  button.resetbtn:hover{
+    border-color:var(--text);color:#fff;
+    box-shadow:0 0 16px rgba(232,238,247,0.15);
+  }
+  button.resetbtn:active{transform:scale(0.96);}
 
   .controlbtn{
-    background:rgba(255,255,255,0.06);border:1px solid rgba(139,148,168,0.25);color:var(--text);
-    width:34px;height:34px;border-radius:50%;font-size:13px;cursor:pointer;
-    display:inline-flex;align-items:center;justify-content:center;transition:border-color .2s,background .2s;
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(139,148,168,0.22);
+    color:var(--text);
+    width:36px;height:36px;border-radius:50%;font-size:14px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;
+    transition:border-color .18s,background .18s,color .18s,transform .08s;
   }
-  .controlbtn:hover{border-color:var(--azure);color:var(--azure);background:rgba(0,212,255,0.1);}
+  .controlbtn:hover{
+    border-color:var(--azure);color:var(--azure);
+    background:rgba(0,212,255,0.08);box-shadow:0 0 14px rgba(0,212,255,0.2);
+  }
+  .controlbtn:active{transform:scale(0.94);}
 
-  /* ---------- Instructions ---------- */
+  /* ========================================================================
+     INSTRUCTIONS — evolving contextual cue
+     ======================================================================== */
   #instr{
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-    z-index:60;text-align:center;pointer-events:none;
-    font-family:var(--font-display);letter-spacing:0.35em;
-    font-size:16px;color:var(--azure);text-transform:uppercase;
-    opacity:0;transition:opacity .4s,letter-spacing .3s,transform .4s;
-    text-shadow:0 0 18px rgba(0,212,255,0.35);
+    z-index:var(--instr-z);text-align:center;pointer-events:none;
+    font-family:var(--font-display);letter-spacing:0.4em;
+    font-size:17px;color:var(--azure);text-transform:uppercase;
+    opacity:0;transition:opacity .35s,letter-spacing .3s,transform .35s;
+    text-shadow:0 0 22px rgba(0,212,255,0.4);
     mix-blend-mode:screen;
   }
   #instr.visible{opacity:1;}
   #instr small{
-    display:block;font-family:var(--font-body);font-size:10px;letter-spacing:0.18em;
-    margin-top:8px;color:var(--text-dim);text-shadow:none;mix-blend-mode:normal;opacity:0.85;
+    display:block;font-family:var(--font-body);font-size:10px;letter-spacing:0.2em;
+    margin-top:10px;color:var(--text-dim);text-shadow:none;mix-blend-mode:normal;opacity:0.82;
   }
 
-  /* ---------- Ledger ---------- */
+  /* ========================================================================
+     LEDGER — destruction ledger, persistent, compact
+     ======================================================================== */
   #ledger{
     position:absolute;bottom:0;right:0;
-    width:min(420px, 92vw);max-height:44vh;
-    background:linear-gradient(180deg, rgba(4,4,8,0.92) 0%, rgba(2,2,4,0.97) 100%);
-    border:1px solid rgba(139,148,168,0.18);border-top:none;border-right:none;
-    border-bottom-left-radius:16px;
-    backdrop-filter:blur(10px);z-index:55;
-    display:flex;flex-direction:column;box-shadow:-8px -8px 30px rgba(0,0,0,0.5);
-    transform:translatey(0);transition:transform .3s;
+    width:min(440px, 94vw);max-height:46vh;
+    background:linear-gradient(180deg, rgba(4,4,8,0.94) 0%, rgba(2,2,4,0.98) 100%);
+    border:1px solid rgba(139,148,168,0.16);border-top:none;border-right:none;
+    border-bottom-left-radius:18px;
+    backdrop-filter:blur(14px) saturate(1.1);
+    z-index:var(--ledger-z);
+    display:flex;flex-direction:column;
+    box-shadow:-10px -10px 40px rgba(0,0,0,0.65);
   }
   @media (max-width:640px){
-    #ledger{position:static;width:100vw;max-height:48vh;border:none;border-top:1px solid rgba(139,148,168,0.18);
+    #ledger{position:static;width:100vw;max-height:50vh;border:none;border-top:1px solid rgba(139,148,168,0.16);
       border-radius:0;order:2;}
     #ledger.collapsed-mobile{display:none;}
   }
   #ledger .ledger-head{
-    display:flex;align-items:center;justify-content:space-between;padding:12px 14px;
-    border-bottom:1px solid rgba(139,148,168,0.18);
-    font-family:var(--font-display);font-size:11px;letter-spacing:0.2em;color:var(--azure);
+    display:flex;align-items:center;justify-content:space-between;padding:13px 16px;
+    border-bottom:1px solid rgba(139,148,168,0.16);
+    font-family:var(--font-display);font-size:10.5px;letter-spacing:0.32em;color:var(--azure);
     text-transform:uppercase;cursor:pointer;
   }
-  #ledger .ledger-head .tag{margin-left:auto;font-size:10px;color:var(--text-dim);letter-spacing:normal;}
-  #ledger .ledger-body{overflow:auto;padding:10px 12px;flex:1;font-size:12px;line-height:1.45;color:var(--text-dim);}
-  #ledger .stat-row{margin-bottom:8px;display:flex;justify-content:space-between;}
-  #ledger .stat-row b{color:var(--text);font-size:13px;font-family:var(--font-display);}
-  #ledger .stat-row .v{font-variant-numeric:tabular-nums;color:var(--azure);}
-  #ledger .events{margin-top:6px;}
-  #ledger .events b.head{display:block;margin-bottom:6px;font-size:10px;letter-spacing:0.16em;color:var(--text-dim);text-transform:uppercase;}
+  #ledger .ledger-head .tag{margin-left:auto;font-size:9.5px;color:var(--text-dim);letter-spacing:normal;}
+  #ledger .ledger-body{overflow:auto;padding:11px 14px;flex:1;font-size:11.5px;line-height:1.5;color:var(--text-dim);}
+  #ledger .stat-row{margin-bottom:9px;display:flex;justify-content:space-between;align-items:baseline;}
+  #ledger .stat-row b{color:var(--text);font-size:12px;font-family:var(--font-display);letter-spacing:0.02em;}
+  #ledger .stat-row .v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--azure);font-size:12.5px;}
+  #ledger .stat-row .sub{color:var(--text-dim);font-size:9px;font-family:var(--font-mono);margin-left:6px;}
+  #ledger .events{margin-top:8px;}
+  #ledger .events b.head{
+    display:block;margin-bottom:7px;font-size:9px;letter-spacing:0.24em;color:var(--text-dim);
+    text-transform:uppercase;
+  }
   #ledger .event{
-    border-left:2px solid rgba(0,212,255,0.25);padding:4px 8px;margin-bottom:7px;
-    background:rgba(255,255,255,0.03);border-radius:0 6px 6px 0;font-size:11.5px;line-height:1.4;
+    border-left:2px solid rgba(0,212,255,0.22);padding:5px 10px;margin-bottom:8px;
+    background:rgba(255,255,255,0.03);border-radius:0 7px 7px 0;
+    font-size:11px;line-height:1.42;transition:background .15s,border-color .15s;
   }
   #ledger .event.chain{border-left-color:var(--gold);}
-  #ledger .event .who{color:var(--text);font-weight:700;}
-  #ledger .event .why{color:var(--text-dim);}
-  #ledger .event .lost{color:var(--danger);font-size:10.5px;margin-top:2px;display:block;}
-  #ledger .empty{color:var(--text-dim);font-style:italic;padding:10px 0;text-align:center;font-size:11px;}
+  #ledger .event:hover{background:rgba(255,255,255,0.07);}
+  #ledger .event .who{color:var(--text);font-weight:600;}
+  #ledger .event .lost{
+    color:var(--danger);font-size:10px;margin-top:3px;display:block;font-family:var(--font-mono);
+  }
+  #ledger .empty{
+    color:var(--text-dim);font-style:italic;padding:12px 0;text-align:center;font-size:11px;
+    font-family:var(--font-mono);
+  }
 
-  /* ---------- Mobile ledger toggle ---------- */
-  #ledger-toggle{position:fixed;bottom:16px;right:16px;z-index:60;
-    background:var(--azure);color:#001825;width:44px;height:44px;border-radius:50%;
-    display:inline-flex;align-items:center;justify-content:center;font-size:14px;
-    box-shadow:0 6px 20px rgba(0,212,255,0.45);cursor:pointer;opacity:0;transition:opacity .3s;}
+  /* ========================================================================
+     MOBILE LEDGER TOGGLE
+     ======================================================================== */
+  #ledger-toggle{
+    position:fixed;bottom:18px;right:18px;z-index:62;
+    background:linear-gradient(135deg, var(--azure), var(--azure-deep));
+    color:#00141f;width:46px;height:46px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;font-size:15px;
+    box-shadow:0 8px 28px rgba(0,212,255,0.5);cursor:pointer;opacity:0;transition:opacity .3s,transform .2s,box-shadow .2s;
+    border:1px solid rgba(0,212,255,0.4);
+  }
   @media (min-width:641px){#ledger-toggle{display:none;}}
-  #ledger-toggle.shown{opacity:1;}
+  #ledger-toggle.shown{opacity:1;transform:scale(1);}
+  #ledger-toggle:active{transform:scale(0.92);}
 
-  /* ---------- Autopsy / Aftermath ---------- */
-  #autopsy{position:absolute;inset:0;z-index:70;display:none;flex-direction:column;
-    background:var(--void-deep);background:linear-gradient(180deg,#030306 0%,var(--void-deep) 60%,var(--void) 100%);}
-  #autopsy .autopsy-head{padding:16px 20px;border-bottom:1px solid rgba(139,148,168,0.15);
-    display:flex;align-items:center;justify-content:space-between;}
-  #autopsy h2{font-family:var(--font-display);font-size:17px;letter-spacing:0.2em;color:var(--azure);text-transform:uppercase;}
-  #autopsy .autopsy-head .closebtn{background:transparent;border:1px solid rgba(139,148,168,0.3);color:var(--text);
-    font-size:11px;padding:6px 14px;border-radius:999px;cursor:pointer;}
-  #autopsy .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;padding:20px;overflow:auto;}
-  #autopsy .card{border:1px solid rgba(139,148,168,0.18);background:rgba(4,4,8,0.5);border-radius:12px;padding:14px;}
-  #autopsy .card h3{font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:var(--azure);margin-bottom:10px;border-bottom:1px solid rgba(139,148,168,0.12);padding-bottom:6px;}
-  #autopsy .card ul{list-style:none;color:var(--text-dim);font-size:11.5px;line-height:1.6;}
-  #autopsy .card ul li{margin-bottom:5px;}
-  #autopsy .card .gone{color:var(--danger);}
-  #autopsy .card .intact{color:var(--ok);}
-  footer.note{padding:16px 20px;font-size:10px;color:var(--text-dim);border-top:1px solid rgba(139,148,168,0.1);text-align:center;line-height:1.5;}
+  /* ========================================================================
+     MODALS — reset confirm, autopsy
+     ======================================================================== */
+  #confirm{
+    position:fixed;inset:0;z-index:var(--modal-z);display:none;
+    align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 45%, rgba(2,2,4,0.72) 0%, rgba(0,0,0,0.88) 100%);
+    backdrop-filter:blur(8px);
+  }
+  #confirm .box{
+    background:var(--void-deep);
+    border:1px solid rgba(139,148,168,0.24);
+    border-radius:20px;
+    padding:30px 34px;max-width:440px;width:90vw;text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,0.8);
+  }
+  #confirm .box b{
+    font-family:var(--font-display);font-size:16px;letter-spacing:0.16em;color:var(--text);
+    display:block;margin-bottom:10px;text-transform:uppercase;
+  }
+  #confirm .box p{
+    font-size:11.5px;color:var(--text-dim);margin-bottom:22px;line-height:1.6;
+  }
+  #confirm .btns{display:flex;gap:12px;justify-content:center;}
+  button.cancelbtn,button.confirmbtn{
+    border:none;padding:10px 22px;border-radius:999px;font-size:11px;
+    letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;font-weight:700;
+    font-family:var(--font-display);transition:transform .08s,box-shadow .2s,opacity .2s;
+  }
+  button.cancelbtn{
+    background:transparent;border:1px solid rgba(139,148,168,0.32);color:var(--text-dim);
+  }
+  button.cancelbtn:hover{color:var(--text);border-color:var(--text);}
+  button.confirmbtn{
+    background:var(--danger);color:#fff;box-shadow:0 0 24px var(--danger-glow);
+  }
+  button.confirmbtn:hover{box-shadow:0 0 32px var(--danger-glow);opacity:0.95;}
+  button.confirmbtn:active{transform:scale(0.96);}
+  button.cancelbtn:active{transform:scale(0.96);}
 
-  /* ---------- Accessibility / screen reader ---------- */
-  #sr-live{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;white-space:nowrap;}
-  .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;}
+  .mutebtn{
+    background:transparent;border:none;color:var(--text-dim);font-size:14px;
+    width:auto;padding:0 8px;cursor:pointer;transition:color .2s,transform .08s;
+  }
+  .mutebtn.muted{color:var(--danger);}
+  .mutebtn:active{transform:scale(0.94);}
 
-  /* ---------- Keyboard filaments (focus targets) ---------- */
+  /* ========================================================================
+     KEYBOARD FILAMENTS — focusable grip targets overlaid on canvas
+     ======================================================================== */
   .kfilament{
-    position:absolute;border-radius:50%;border:2px solid rgba(0,212,255,0.4);
-    background:radial-gradient(circle at 40% 40%, rgba(0,212,255,0.25) 0%, rgba(2,6,14,0.6) 70%, #020204 100%);
-    box-shadow:0 0 14px rgba(0,212,255,0.25), inset 0 0 8px rgba(0,212,255,0.2);
+    position:absolute;border-radius:50%;
+    border:2px solid rgba(0,212,255,0.45);
+    background:radial-gradient(circle at 38% 38%, rgba(0,212,255,0.3) 0%, rgba(2,6,14,0.65) 55%, #010102 100%);
+    box-shadow:0 0 16px rgba(0,212,255,0.3), inset 0 0 10px rgba(0,212,255,0.25);
     cursor:pointer;
-    display:inline-flex;align-items:center;justify-content:center;font-size:10px;letter-spacing:0.1em;
-    color:var(--azure);text-transform:uppercase;z-index:45;transition:border-color .2s,box-shadow .2s,transform .1s;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;
+    color:var(--azure);text-transform:uppercase;z-index:var(--kbd-z);
+    transition:border-color .15s,box-shadow .15s,transform .1s,background .15s;
   }
   .kfilament::after{
     content:'';
-    position:absolute;width:6px;height:6px;border-radius:50%;background:var(--azure);
-    box-shadow:0 0 10px var(--azure);top:50%;left:50%;transform:translate(-50%,-50%);
+    position:absolute;width:7px;height:7px;border-radius:50%;background:var(--azure);
+    box-shadow:0 0 12px var(--azure);top:50%;left:50%;transform:translate(-50%,-50%);
   }
-  .kfilament:focus-visible{outline:none;border-color:#fff;box-shadow:0 0 0 4px rgba(0,212,255,0.35),0 0 20px rgba(0,212,255,0.5);background:rgba(0,212,255,0.18);}
-  .kfilament.gripped{border-color:#fff;background:radial-gradient(circle at 40% 40%, rgba(255,255,255,0.25) 0%, rgba(0,212,255,0.4) 70%, #0a0a12 100%);color:#fff;transform:scale(1.08);box-shadow:0 0 20px rgba(255,255,255,0.35);}
+  .kfilament:focus-visible{
+    outline:none;border-color:#fff;
+    box-shadow:0 0 0 5px rgba(0,212,255,0.4),0 0 24px rgba(0,212,255,0.55);
+    background:rgba(0,212,255,0.2);transform:scale(1.12);
+  }
+  .kfilament.gripped{
+    border-color:#fff;
+    background:radial-gradient(circle at 38% 38%, rgba(255,255,255,0.3) 0%, rgba(0,212,255,0.45) 55%, #0a0a12 100%);
+    color:#fff;transform:scale(1.18);
+    box-shadow:0 0 22px rgba(255,255,255,0.4),0 0 40px rgba(0,212,255,0.45);
+  }
 
-  /* ---------- Reduced motion ---------- */
+  /* ========================================================================
+     AUTOPSY / AFTERMATH
+     ======================================================================== */
+  #autopsy{
+    position:absolute;inset:0;z-index:70;display:none;flex-direction:column;
+    background:radial-gradient(circle at 50% 40%, #040408 0%, var(--void-deep) 55%, var(--void) 100%);
+  }
+  #autopsy .autopsy-head{
+    padding:18px 24px;border-bottom:1px solid rgba(139,148,168,0.14);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  #autopsy h2{
+    font-family:var(--font-display);font-size:17px;letter-spacing:0.32em;color:var(--azure);
+    text-transform:uppercase;
+  }
+  #autopsy .autopsy-head .closebtn{
+    background:transparent;border:1px solid rgba(139,148,168,0.26);color:var(--text);
+    font-size:10px;padding:7px 16px;border-radius:999px;cursor:pointer;
+    font-family:var(--font-display);text-transform:uppercase;letter-spacing:0.16em;
+    transition:border-color .2s,color .2s,background .2s;
+  }
+  #autopsy .closebtn:hover{border-color:var(--azure);color:var(--azure);background:rgba(0,212,255,0.06);}
+  #autopsy .grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;
+    padding:24px;overflow:auto;
+  }
+  #autopsy .card{
+    border:1px solid rgba(139,148,168,0.18);
+    background:linear-gradient(180deg, rgba(6,6,10,0.6) 0%, rgba(3,3,6,0.8) 100%);
+    border-radius:14px;padding:16px;
+  }
+  #autopsy .card h3{
+    font-size:12px;letter-spacing:0.24em;text-transform:uppercase;color:var(--azure);
+    margin-bottom:12px;border-bottom:1px solid rgba(139,148,168,0.12);padding-bottom:7px;
+    font-family:var(--font-display);
+  }
+  #autopsy .card ul{list-style:none;color:var(--text-dim);font-size:11px;line-height:1.7;}
+  #autopsy .card ul li{margin-bottom:6px;}
+  #autopsy .card .gone{color:var(--danger);font-family:var(--font-mono);}
+  #autopsy .card .intact{color:var(--ok);font-family:var(--font-mono);}
+  footer.note{
+    padding:18px 24px;font-size:9.5px;color:var(--text-dim);
+    border-top:1px solid rgba(139,148,168,0.1);text-align:center;line-height:1.6;
+    font-family:var(--font-mono);
+  }
+
+  /* ========================================================================
+     ACCESSIBILITY
+     ======================================================================== */
+  #sr-live{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0,0,0,0);border:0;white-space:nowrap;
+  }
+
+  /* ========================================================================
+     REDUCED MOTION
+     ======================================================================== */
   @media (prefers-reduced-motion: reduce){
     #instr{transition:none;}
     *{transition:none !important;animation:none !important;}
   }
-
-  /* ---------- Reset confirm ---------- */
-  #confirm{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
-    background:rgba(2,2,4,0.85);backdrop-filter:blur(6px);}
-  #confirm .box{background:var(--void-deep);border:1px solid rgba(139,148,168,0.25);border-radius:16px;
-    padding:26px 30px;max-width:420px;width:88vw;text-align:center;}
-  #confirm .box b{font-family:var(--font-display);font-size:15px;letter-spacing:0.12em;color:var(--text);display:block;margin-bottom:8px;}
-  #confirm .box p{font-size:11.5px;color:var(--text-dim);margin-bottom:18px;line-height:1.5;}
-  #confirm .btns{display:flex;gap:10px;justify-content:center;}
-  button.cancelbtn,button.confirmbtn{
-    border:none;padding:8px 18px;border-radius:999px;font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;
-    cursor:pointer;font-weight:700;
-  }
-  button.cancelbtn{background:transparent;border:1px solid rgba(139,148,168,0.35);color:var(--text-dim);}
-  button.confirmbtn{background:var(--danger);color:#fff;box-shadow:0 0 20px rgba(255,77,109,0.35);}
-  button.confirmbtn:active{transform:scale(0.97);}
-
-  .mutebtn{background:transparent;border:none;color:var(--text-dim);font-size:13px;width:auto;padding:0 6px;cursor:pointer;}
-  .mutebtn.muted{color:var(--danger);}
 </style>
 </head>
 <body>
 
+<div id="vignette" aria-hidden="true"></div>
 <canvas id="stage"></canvas>
 
 <header id="chrome">
@@ -248,14 +411,14 @@
   <div id="ledgerBody" class="ledger-body">
     <div class="stat-row"><b>Stars directly extracted</b><span class="v" id="cDirect">0</span></div>
     <div class="stat-row"><b>Stars lost to chain reaction</b><span class="v" id="cChain">0</span></div>
-    <div class="stat-row"><b>Total collapsed stars</b><span class="v" id="cTotal">0</span> <span style="color:var(--text-dim);font-size:10px;">of 5</span></div>
+    <div class="stat-row"><b>Total collapsed stars</b><span class="v" id="cTotal">0</span> <span class="sub">of 5</span></div>
     <div class="stat-row"><b>Planets lost</b><span class="v" id="cPlanets">0</span></div>
     <div class="stat-row"><b>Moons lost</b><span class="v" id="cMoons">0</span></div>
     <div class="stat-row"><b>Intact systems</b><span class="v" id="cIntact">5</span></div>
     <div class="stat-row"><b>Chain reactions</b><span class="v" id="cChainCount">0</span></div>
     <div class="events" id="eventsPanel">
       <b class="head">Event log</b>
-      <div id="eventsList"><div class="empty">Initial ledger &mdash; all zeros.</div></div>
+      <div id="eventsList"><div class="empty">Initial ledger — all zeros.</div></div>
     </div>
   </div>
 </div>
@@ -265,7 +428,7 @@
 <div id="confirm">
   <div class="box">
     <b>Reset Universe</b>
-    <p>This reconstructs the original graph, restores all five intact stars, every orbiting body, and zeroes the ledger. This cannot be undone except by unmaking again.</p>
+    <p>This reconstructs the original graph, restores all five intact stars, every orbiting body, and zeroes the ledger.</p>
     <div class="btns">
       <button class="cancelbtn" id="resetCancel">Cancel</button>
       <button class="confirmbtn" id="resetConfirm">Confirm Reset</button>
@@ -281,13 +444,13 @@
   <div class="grid" id="autopsyGrid"></div>
   <footer class="note">
     The autopsy is subordinate to the instrument. It shows the pre-collapse inventory and final topology
-    &mdash; non-destructive, read-only. All values derive from the simulation object inventory.
+    — non-destructive, read-only. All values derive from the simulation object inventory.
   </footer>
 </div>
 
 <script>
 /* ========================================================================
-   STARSILK: THE UNMAKING ENGINE
+   STARSILK: THE UNMAKING ENGINE — PREMIUM EDITION
    Single-file interactive application. Canvas 2D rendering, deterministic
    simulation, event ledger, Web Audio synthesis, keyboard/touch/mouse input.
    ======================================================================== */
@@ -303,7 +466,11 @@
     chainDelayMax: 1.9,
     stressPerCollapse: 34,
     chainStressThreshold: 100,
-    starBaseRadius: 26,
+    starBaseRadius: 28,
+    // VFX
+    particleMax: 160,
+    shakeMax: 4,
+    vignettePulse: 0.18,
   };
 
   // ------------------------------------------------------------------ Audio (Web Audio, gesture-initiated)
@@ -370,21 +537,21 @@
         const rum = ctx.createOscillator(); rum.type = 'sawtooth';
         const rg = ctx.createGain();
         rum.connect(rg); rg.connect(master);
-        rum.frequency.setValueAtTime(80, t);
-        rum.frequency.exponentialRampToValueAtTime(22, t + 0.5);
-        rg.gain.setValueAtTime(0.12, t);
-        rg.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-        rum.start(); rum.stop(t + 0.5);
-        const bufSize = ctx.sampleRate * 0.25;
+        rum.frequency.setValueAtTime(90, t);
+        rum.frequency.exponentialRampToValueAtTime(18, t + 0.55);
+        rg.gain.setValueAtTime(0.14, t);
+        rg.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+        rum.start(); rum.stop(t + 0.55);
+        const bufSize = ctx.sampleRate * 0.3;
         const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
         const data = buf.getChannelData(0);
         for(let i=0;i<bufSize;i++) data[i] = (Math.random()*2-1);
         const nb = ctx.createBufferSource(); nb.buffer = buf;
         const ng = ctx.createGain();
         nb.connect(ng); ng.connect(master);
-        ng.gain.setValueAtTime(0.18, t);
-        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-        nb.start(); nb.stop(t + 0.25);
+        ng.gain.setValueAtTime(0.2, t);
+        ng.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        nb.start(); nb.stop(t + 0.3);
       },
       snap(){
         if(muted || !ctx || !master || !active) return;
@@ -392,11 +559,91 @@
         const o = ctx.createOscillator(); o.type = 'square';
         const g = ctx.createGain();
         o.connect(g); g.connect(master);
-        o.frequency.setValueAtTime(340, t);
-        o.frequency.exponentialRampToValueAtTime(90, t + 0.1);
-        g.gain.setValueAtTime(0.06, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-        o.start(); o.stop(t + 0.1);
+        o.frequency.setValueAtTime(360, t);
+        o.frequency.exponentialRampToValueAtTime(80, t + 0.12);
+        g.gain.setValueAtTime(0.07, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        o.start(); o.stop(t + 0.12);
+      }
+    };
+  })();
+
+  // ------------------------------------------------------------------ Particle system (object pool)
+  const Particles = (function(){
+    const pool = [];
+    let activeCount = 0;
+    for(let i=0;i<CFG.particleMax;i++) pool.push({x:0,y:0,vx:0,vy:0,life:0,maxLife:0,size:0,color:'#00d4ff',alpha:1,type:'glimmer',active:false});
+    function spawn(x,y,vx,vy,life,size,color,type='glimmer'){
+      let p = pool.find(pp=>!pp.active);
+      if(!p){
+        // reuse oldest (simple LRU-ish)
+        p = pool[0];
+        for(let i=1;i<pool.length;i++) if(pool[i].life < p.life) p = pool[i];
+      }
+      p.x=x;p.y=y;p.vx=vx;p.vy=vy;p.life=life;p.maxLife=life;p.size=size;p.color=color;p.type=type;p.alpha=1;p.active=true;
+      activeCount++;
+      return p;
+    }
+    function update(dt){
+      activeCount=0;
+      pool.forEach(p=>{
+        if(!p.active) return;
+        activeCount++;
+        p.x += p.vx * dt * 60;
+        p.y += p.vy * dt * 60;
+        p.life -= dt;
+        const t = 1 - p.life / p.maxLife;
+        p.alpha = 1 - t;
+        p.size *= 0.94;
+        p.vx *= 0.92;
+        p.vy *= 0.92;
+        if(p.life<=0) p.active=false;
+      });
+    }
+    function draw(ctx,t){
+      pool.forEach(p=>{
+        if(!p.active) return;
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        if(p.type==='debris'){
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x,p.y, Math.max(0.5,p.size), 0, Math.PI*2);
+          ctx.fill();
+        } else if(p.type==='spark'){
+          ctx.fillStyle = p.color;
+          ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x+p.vx*0.15, p.y+p.vy*0.15); ctx.stroke();
+        } else {
+          ctx.beginPath(); ctx.arc(p.x,p.y, Math.max(0.4,p.size*0.6), 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+      });
+    }
+    return {spawn,update,draw};
+  })();
+
+  // ------------------------------------------------------------------ Screen effects (shake + vignette)
+  const Screen = (function(){
+    let shakeTime = 0;
+    let vignettePulseTime = 0;
+    return {
+      shake(intensity=1){ shakeTime = Math.max(shakeTime, 0.35 * intensity); },
+      pulseVignette(){ vignettePulseTime = Math.max(vignettePulseTime, 0.5); },
+      update(dt){
+        if(shakeTime>0){ shakeTime = Math.max(0, shakeTime - dt); }
+        if(vignettePulseTime>0){ vignettePulseTime = Math.max(0, vignettePulseTime - dt); }
+      },
+      getOffset(){
+        if(shakeTime<=0) return {x:0,y:0};
+        const t = shakeTime;
+        const mag = CFG.shakeMax * (t / 0.35);
+        return {x:(Math.random()*2-1)*mag, y:(Math.random()*2-1)*mag};
+      },
+      getVignetteAlpha(){
+        const base = 0.5;
+        const pulse = vignettePulseTime > 0 ? CFG.vignettePulse * Math.sin(vignettePulseTime * Math.PI * 4) * (vignettePulseTime/0.5) : 0;
+        return base + pulse;
       }
     };
   })();
@@ -502,7 +749,6 @@
         const starRadius = CFG.starBaseRadius + 14;
         if(dStar < starRadius && dStar < bestD){ bestD = dStar; best = {node:n, kind:'star', d:dStar}; }
         this.edges.forEach(e=>{
-          // Only consider edges this node is actually an endpoint of.
           let other = null;
           if(e.a === n.id) other = this.nodes.get(e.b);
           else if(e.b === n.id) other = this.nodes.get(e.a);
@@ -555,6 +801,14 @@
       if(n.moon) n.moon.alive = false;
       this.log('aftermath', `${n.name} is now an absence node.`, {system: n.id});
       Audio.snap();
+      Screen.shake(1);
+      Screen.pulseVignette();
+      // burst debris particles at the star position
+      for(let i=0;i<14;i++){
+        const a = Math.random()*Math.PI*2;
+        const spd = 40 + Math.random()*160;
+        Particles.spawn(n.x, n.y, Math.cos(a)*spd, Math.sin(a)*spd, 0.5 + Math.random()*0.9, 1.5 + Math.random()*2.5, '#00d4ff', 'debris');
+      }
     },
 
     update(dt){
@@ -583,6 +837,8 @@
           n.angleOffset = 0;
         }
       });
+      Particles.update(dt);
+      Screen.update(dt);
     },
 
     reset(){
@@ -592,35 +848,7 @@
 
   Sim.init();
 
-  // Distant starfield - pinpricks in the ink-deep void, slow drift and twinkle.
-  // Not a nebula wallpaper; just enough depth to make the void feel immense.
-  const STARFIELD_COUNT = 120;
-  const starfield = [];
-  for(let i=0;i<STARFIELD_COUNT;i++){
-    starfield.push({
-      x: Math.random(), y: Math.random(),
-      mag: 0.3 + Math.random() * 0.7,
-      twinkle: Math.random() * Math.PI * 2,
-      speed: 0.00015 + Math.random() * 0.00025
-    });
-  }
-
-  function drawStarfield(t){
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    starfield.forEach(s=>{
-      const a = (s.x * W + s.y * H * 0.5 + t * s.speed * 60) % 1;
-      const b = (s.y * H + s.x * W * 0.3 - t * s.speed * 40) % 1;
-      const px = a * W, py = b * H;
-      const alpha = s.mag * (0.4 + 0.6 * Math.sin(t * 0.002 + s.twinkle));
-      if(alpha <= 0) return;
-      ctx.fillStyle = `rgba(200,216,255,${alpha})`;
-      ctx.beginPath(); ctx.arc(px, py, s.mag * 0.5 + 0.4, 0, Math.PI*2); ctx.fill();
-    });
-    ctx.restore();
-  }
-
-  // ------------------------------------------------------------------ Rendering
+  // ------------------------------------------------------------------ Canvas setup (must come before drawing functions reference it)
   const canvas = document.getElementById('stage');
   const ctx = canvas.getContext('2d', {alpha:false});
   let W, H;
@@ -628,6 +856,52 @@
   window.addEventListener('resize', resize);
   resize();
 
+  // ------------------------------------------------------------------ Starfield (3 parallax layers + depth)
+  const STARFIELD_LAYERS = [
+    {count: 60,  magRange:[0.25,0.55], speedRange:[0.00008,0.00018], color:'rgba(160,176,210,0.5)', alphaMult:0.5},
+    {count: 100, magRange:[0.15,0.4],  speedRange:[0.00014,0.0003],  color:'rgba(200,216,255,0.42)', alphaMult:0.42},
+    {count: 140, magRange:[0.1,0.3],   speedRange:[0.00022,0.00045], color:'rgba(220,232,255,0.34)', alphaMult:0.34},
+  ];
+  const starfield = [];
+  STARFIELD_LAYERS.forEach((layer, li)=>{
+    for(let i=0;i<layer.count;i++){
+      starfield.push({
+        layer: li,
+        x: Math.random(), y: Math.random(),
+        mag: layer.magRange[0] + Math.random()*(layer.magRange[1]-layer.magRange[0]),
+        twinkle: Math.random()*Math.PI*2,
+        speed: layer.speedRange[0] + Math.random()*(layer.speedRange[1]-layer.speedRange[0]),
+        color: layer.color,
+        alphaMult: layer.alphaMult,
+        driftX: (Math.random()*2-1)*0.3,
+        driftY: (Math.random()*2-1)*0.3,
+      });
+    }
+  });
+
+  function drawStarfield(t){
+    ctx.save();
+    starfield.forEach(s=>{
+      // parallax: farther layers move slower
+      const mult = 1 - s.layer * 0.28;
+      const a = (s.x * W + s.y * H * 0.5 + t * s.speed * 60 * mult + t * s.driftX * 0.15) % 1;
+      const b = (s.y * H + s.x * W * 0.3 - t * s.speed * 40 * mult - t * s.driftY * 0.15) % 1;
+      const px = a * W, py = b * H;
+      const alpha = s.alphaMult * (0.4 + 0.6 * Math.sin(t * 0.0018 + s.twinkle));
+      if(alpha <= 0) return;
+      ctx.fillStyle = s.color;
+      ctx.globalAlpha = alpha;
+      ctx.beginPath(); ctx.arc(px, py, s.mag * 0.55 + 0.35, 0, Math.PI*2); ctx.fill();
+      // occasional brighter "distant sun" glint on far layer
+      if(s.layer===0 && Math.sin(t*0.0007 + s.twinkle*3) > 0.96){
+        ctx.fillStyle = 'rgba(240,248,255,0.5)';
+        ctx.beginPath(); ctx.arc(px,py,s.mag*1.6,0,Math.PI*2); ctx.fill();
+      }
+    });
+    ctx.restore();
+  }
+
+  // ------------------------------------------------------------------ Rendering helpers
   function pointSegDist(px, py, x1, y1, x2, y2){
     const dx = x2 - x1, dy = y2 - y1;
     const len2 = dx*dx + dy*dy;
@@ -638,76 +912,142 @@
   }
 
   function gradStar(x, y, r, hue, alive){
-    const g = ctx.createRadialGradient(x, y, r * 0.12, x, y, r * 1.15);
+    const g = ctx.createRadialGradient(x, y, r * 0.1, x, y, r * 1.2);
     if(alive){
       g.addColorStop(0, '#ffffff');
-      g.addColorStop(0.28, `hsla(${hue}, 70%, 55%, 0.9)`);
-      g.addColorStop(0.6, `hsla(${hue}, 60%, 30%, 0.55)`);
-      g.addColorStop(1, `hsla(${hue}, 50%, 10%, 0)`);
+      g.addColorStop(0.22, `hsla(${hue}, 72%, 58%, 0.92)`);
+      g.addColorStop(0.5, `hsla(${hue}, 65%, 35%, 0.62)`);
+      g.addColorStop(0.8, `hsla(${hue}, 55%, 18%, 0.3)`);
+      g.addColorStop(1, `hsla(${hue}, 50%, 8%, 0)`);
     } else {
       g.addColorStop(0, '#1a1a24');
-      g.addColorStop(0.5, '#0c0c12');
+      g.addColorStop(0.5, '#0b0b10');
       g.addColorStop(1, '#020204');
     }
     return g;
   }
 
+  // ------------------------------------------------------------------ Star core (premium layered)
   function drawStar(n, t){
     const r = CFG.starBaseRadius;
-    const ox = Math.sin(t * 0.003) * n.angleOffset;
-    // collapse contraction: core pulls violently inward before surrender
+    const ox = Math.sin(t * 0.0028) * n.angleOffset;
     const contract = n.state === 'COLLAPSING' ? (1 - n.collapseT) : 1;
-    const cr = r * Math.max(0.12, contract);
-    const glowR = r * (2.6 - 1.4 * (1 - contract));
+    const cr = r * Math.max(0.1, contract);
+    const glowR = r * (2.9 - 1.5 * (1 - contract));
     ctx.save();
     ctx.translate(n.x + ox, n.y);
-    // outer atmospheric glow (fades as collapse commits)
+
+    // Light failure during collapse: outer glow dies first
     if(n.state !== 'ABSENCE'){
-      ctx.globalAlpha = 0.9 - 0.5 * (1 - contract);
+      ctx.globalAlpha = 0.85 - 0.45 * (1 - contract);
       ctx.fillStyle = gradStar(n.x, n.y, glowR, n.hue, true);
       ctx.beginPath(); ctx.arc(0, 0, glowR, 0, Math.PI*2); ctx.fill();
     }
-    // structural rings - delicate orbital engraving around the core
-    const layers = 4;
+
+    // Structural engraving rings — delicate orbital engraving around core
+    const layers = 5;
     for(let i=0;i<layers;i++){
-      const lr = cr * (0.92 - i * 0.2);
+      const lr = cr * (0.95 - i * 0.17);
       if(lr <= 0) continue;
-      ctx.strokeStyle = `hsla(${n.hue}, 70%, ${55 - i*12}%, ${0.5 - i*0.12})`;
-      ctx.lineWidth = (2 - i * 0.5) * contract;
-      ctx.setLineDash(i % 2 === 0 ? [6, 7] : [2, 5]);
-      ctx.lineDashOffset = -t * 15;
+      const alpha = (0.45 - i*0.09) * contract;
+      ctx.strokeStyle = `hsla(${n.hue}, 70%, ${60 - i*10}%, ${alpha})`;
+      ctx.lineWidth = (2.2 - i*0.5) * contract;
+      ctx.setLineDash(i % 2 === 0 ? [7, 9] : [3, 6]);
+      ctx.lineDashOffset = -t * 12 + (i * 13);
       ctx.beginPath(); ctx.arc(0, 0, lr, 0, Math.PI*2); ctx.stroke();
       ctx.setLineDash([]);
     }
-    // core body - luminous center that contracts inward on surrender
+
+    // Inner caustic ring — light concentrating at the edge before surrender
+    if(n.state !== 'ABSENCE' && contract > 0.3){
+      const causticR = cr * 0.92;
+      const g2 = ctx.createRadialGradient(0,0, causticR*0.7, 0,0, causticR*1.05);
+      g2.addColorStop(0, `hsla(${n.hue}, 70%, 50%, 0)`);
+      g2.addColorStop(0.5, `hsla(${n.hue}, 70%, 60%, 0.35)`);
+      g2.addColorStop(1, `hsla(${n.hue}, 70%, 50%, 0)`);
+      ctx.fillStyle = g2;
+      ctx.beginPath(); ctx.arc(0,0, causticR*1.05, 0, Math.PI*2); ctx.fill();
+    }
+
+    // Core body — luminous center that contracts inward on surrender
     if(n.state !== 'ABSENCE'){
       ctx.fillStyle = gradStar(n.x, n.y, cr, n.hue, true);
       ctx.beginPath(); ctx.arc(0, 0, cr, 0, Math.PI*2); ctx.fill();
-      // bright core highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.45)';
-      ctx.beginPath(); ctx.arc(-cr*0.25, -cr*0.25, cr*0.3, 0, Math.PI*2); ctx.fill();
+      // Bright core highlight (off-center)
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.beginPath(); ctx.arc(-cr*0.22, -cr*0.22, cr*0.32, 0, Math.PI*2); ctx.fill();
+      // Subtle secondary highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.beginPath(); ctx.arc(cr*0.18, cr*0.28, cr*0.2, 0, Math.PI*2); ctx.fill();
     }
-    // grip fractures - the silk is being pulled
+
+    // Grip fractures — silk being pulled, the core deforming
     if(n.state === 'GRIPPED'){
-      ctx.strokeStyle = 'rgba(0,212,255,0.5)'; ctx.lineWidth = 1.8;
+      ctx.strokeStyle = 'rgba(0,212,255,0.55)';
+      ctx.lineWidth = 1.9;
       ctx.beginPath();
-      for(let k=0;k<6;k++){
-        const a = (k/6) * Math.PI * 2 + t*0.003;
-        ctx.moveTo(Math.cos(a)*cr*0.45, Math.sin(a)*cr*0.45);
-        ctx.lineTo(Math.cos(a)*cr*1.15, Math.sin(a)*cr*1.15);
+      for(let k=0;k<7;k++){
+        const a = (k/7) * Math.PI * 2 + t*0.0035;
+        const rr = cr * (0.5 + 0.35 * Math.sin(t*0.004 + k));
+        ctx.moveTo(Math.cos(a)*cr*0.4, Math.sin(a)*cr*0.4);
+        ctx.lineTo(Math.cos(a)*rr, Math.sin(a)*rr);
       }
       ctx.stroke();
     }
+
+    // Collapse crunch — rapid final contraction flashes
+    if(n.state === 'COLLAPSING' && n.collapseT > 0.75){
+      const flash = (n.collapseT - 0.75) / 0.25;
+      ctx.strokeStyle = `rgba(255,255,255,${flash * 0.45})`;
+      ctx.lineWidth = 2 * flash;
+      ctx.beginPath(); ctx.arc(0,0, cr * (0.6 + flash*0.5), 0, Math.PI*2); ctx.stroke();
+    }
+
     ctx.restore();
   }
 
-  // Per-system orbital architecture signatures (distinct beyond hue alone).
+  // ------------------------------------------------------------------ Planets (banded surface + atmosphere)
+  function drawPlanet(ctx, cx, cy, r, angle, orbitR, color, coll, isMoon){
+    const px = Math.cos(angle) * orbitR;
+    const py = Math.sin(angle) * orbitR;
+    const pr = orbitR * (1 - coll * 0.9);
+    const sx = Math.cos(angle) * pr;
+    const sy = Math.sin(angle) * pr;
+    const ps = r * (1 - coll * 0.55);
+    if(ps <= 0) return;
+    ctx.save();
+    ctx.translate(sx, sy);
+    // atmospheric halo
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.18 * (1 - coll * 0.6);
+    ctx.beginPath(); ctx.arc(0, 0, ps * 2.4, 0, Math.PI*2); ctx.fill();
+    // banded surface — horizontal stripes for cosmic body character
+    const bands = 5;
+    for(let b=0;b<bands;b++){
+      const by = -ps + (b / bands) * ps * 2;
+      const bh = (ps * 2) / bands * 0.7;
+      ctx.fillStyle = b % 2 === 0 ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.18)';
+      ctx.beginPath();
+      ctx.ellipse(0, by, ps * 0.95, bh * 0.5, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+    // equatorial accent line
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0,0, ps*0.92, ps*0.42, 0, 0, Math.PI*2); ctx.stroke();
+    // specular highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.beginPath(); ctx.arc(-ps*0.3, -ps*0.3, ps*0.28, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // ------------------------------------------------------------------ Orbits (architectural rings + nodal markers)
   const ORBIT_STYLE = {
-    sys1:{dash:[7,11],dir:1,  phase:0},
-    sys2:{dash:[5,9],  dir:-1, phase:0.7},
-    sys3:{dash:[9,13], dir:1,  phase:1.4},
-    sys4:{dash:[4,14], dir:-1, phase:2.1},
-    sys5:{dash:[11,7], dir:1,  phase:2.8},
+    sys1:{dash:[8,12],dir:1,  phase:0,   rings:2},
+    sys2:{dash:[6,10],  dir:-1, phase:0.7, rings:3},
+    sys3:{dash:[10,14], dir:1,  phase:1.4, rings:2},
+    sys4:{dash:[5,15],  dir:-1, phase:2.1, rings:4},
+    sys5:{dash:[12,8],  dir:1,  phase:2.8, rings:2},
   };
 
   function drawOrbits(n, t){
@@ -715,45 +1055,57 @@
     const style = ORBIT_STYLE[n.id] || ORBIT_STYLE.sys1;
     ctx.save(); ctx.translate(n.x, n.y);
     const grip = n.state === 'GRIPPED';
-    const tremble = grip ? Math.sin(t * 0.02 + style.phase) * 1.2 : 0;
-    // collapse: orbits fail and planets spiral inward before vanishing
+    const tremble = grip ? Math.sin(t * 0.018 + style.phase) * 1.4 : 0;
     const coll = n.state === 'COLLAPSING' ? n.collapseT : 0;
+
+    // concentric architectural rings
+    for(let ring=0; ring<style.rings; ring++){
+      const ringR = style.rings > 1 ? (ring + 1) * 0.34 : 1;
+      n.planets.forEach((p, idx)=>{
+        if(!p.alive) return;
+        const baseR = p.r * ringR;
+        const orbitR = baseR + tremble;
+        const alpha = 0.14 * (1 - coll * 0.75) * (ring === 0 ? 1 : 0.55);
+        ctx.strokeStyle = `rgba(139,148,168,${alpha})`;
+        ctx.lineWidth = ring === 0 ? 1.1 : 0.6;
+        ctx.setLineDash(style.dash);
+        ctx.lineDashOffset = -t * 16 * style.dir + (idx * 6) + (ring * 9);
+        ctx.beginPath(); ctx.arc(0, 0, orbitR, 0, Math.PI*2); ctx.stroke();
+        ctx.setLineDash([]);
+        // nodal marker — tiny tick at planet position
+        const pa = p.angle + (style.dir * coll * 1.4);
+        const mx = Math.cos(pa) * orbitR;
+        const my = Math.sin(pa) * orbitR;
+        ctx.fillStyle = `rgba(0,212,255,${0.35 * (1 - coll * 0.8)})`;
+        ctx.beginPath(); ctx.arc(mx, my, 1.2, 0, Math.PI*2); ctx.fill();
+      });
+    }
+
+    // planets
     n.planets.forEach(p=>{
       if(!p.alive) return;
-      ctx.strokeStyle = `rgba(139,148,168,${0.16 * (1 - coll * 0.8)})`;
-      ctx.lineWidth = 1; ctx.setLineDash(style.dash); ctx.lineDashOffset = -t * 18 * style.dir + (p.idx * 5);
-      const orbitR = p.r + tremble;
-      ctx.beginPath(); ctx.arc(0, 0, orbitR, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
-      // during collapse, planets spiral toward the center (failing orbits)
-      const spiral = coll * 0.9;
-      const pa = p.angle + (style.dir * coll * 1.5);
-      const pr = p.r * (1 - spiral);
-      ctx.fillStyle = p.color;
-      ctx.beginPath(); ctx.arc(Math.cos(pa)*pr, Math.sin(pa)*pr, p.size * (1 - coll*0.5), 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.beginPath(); ctx.arc(Math.cos(pa)*pr - p.size*0.35, Math.sin(pa)*pr - p.size*0.35, p.size*0.3 * (1-coll*0.5), 0, Math.PI*2); ctx.fill();
+      const coll = n.state === 'COLLAPSING' ? n.collapseT : 0;
+      drawPlanet(ctx, n.x, n.y, p.size, p.angle + (style.dir * coll * 1.4), p.r, p.color, coll, false);
     });
+
+    // moon
     if(n.moon && n.moon.alive){
       const p = n.planets.find(pp=>pp.id === n.moon.planet);
       if(p && p.alive){
         const coll = n.state === 'COLLAPSING' ? n.collapseT : 0;
-        ctx.strokeStyle = `rgba(139,148,168,${0.12 * (1 - coll * 0.8)})`;
-        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = `rgba(139,148,168,${0.11 * (1 - coll * 0.75)})`;
+        ctx.lineWidth = 0.7;
         ctx.beginPath();
         const mR = n.moon.r + tremble;
         ctx.arc(Math.cos(p.angle)*p.r*(1-coll*0.9), Math.sin(p.angle)*p.r*(1-coll*0.9), mR, 0, Math.PI*2);
         ctx.stroke();
-        ctx.fillStyle = n.moon.color;
-        ctx.beginPath();
-        ctx.arc(Math.cos(p.angle)*p.r*(1-coll*0.9) + Math.cos(n.moon.angle)*n.moon.r*(1-coll*0.5),
-                Math.sin(p.angle)*p.r*(1-coll*0.9) + Math.sin(n.moon.angle)*n.moon.r*(1-coll*0.5),
-                n.moon.size * (1 - coll*0.5), 0, Math.PI*2);
-        ctx.fill();
+        drawPlanet(ctx, n.x, n.y, n.moon.size, p.angle + n.moon.angle, p.r*(1-coll*0.9), n.moon.color, coll, true);
       }
     }
     ctx.restore();
   }
 
+  // ------------------------------------------------------------------ Starsilk filament (dimensional barcode ribbon)
   function drawFilament(a, b, gripped, pullOffset, tension){
     if(a.state === 'ABSENCE' || b.state === 'ABSENCE') return;
     ctx.save();
@@ -761,94 +1113,130 @@
     const len = Math.hypot(dx, dy);
     const ang = Math.atan2(dy, dx);
 
-    // Subtle tension curvature: the silk bows under strain toward the pull point.
+    // Tension curvature — silk bows toward pull point
     let midX = (a.x+b.x)/2, midY = (a.y+b.y)/2;
     if(gripped && pullOffset){
       const nx = -Math.sin(ang), ny = Math.cos(ang);
       const pullDot = pullOffset.x * nx + pullOffset.y * ny;
-      midX = a.x + dx*0.5 + nx * (pullDot * 0.35);
-      midY = a.y + dy*0.5 + ny * (pullDot * 0.35);
+      midX = a.x + dx*0.5 + nx * (pullDot * 0.38);
+      midY = a.y + dy*0.5 + ny * (pullDot * 0.38);
     }
 
     ctx.translate(midX, midY);
     ctx.rotate(ang);
 
-    const baseW = 8 + tension * 14;
-    const pulse = Math.sin(Date.now() * 0.012 + (a.id<b.id?0:1)) * (1 + tension * 0.4);
+    const baseW = 7.5 + tension * 13;
+    const pulse = Math.sin(t * 0.011 + (a.id < b.id ? 0 : 1.7)) * (1 + tension * 0.35);
 
-    // Outer luminous aura (dimensional depth)
-    ctx.strokeStyle = `rgba(0,212,255,${0.14 + tension*0.18})`;
-    ctx.lineWidth = baseW * 2.2 + pulse * 2;
+    // Outer luminous aura — dimensional depth
+    ctx.strokeStyle = `rgba(0,212,255,${0.12 + tension*0.16})`;
+    ctx.lineWidth = baseW * 2.4 + pulse * 2.2;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.beginPath(); ctx.moveTo(-len/2, 0); ctx.lineTo(len/2, 0); ctx.stroke();
 
-    // Core silk bar - bright azure
+    // Core silk bar — bright azure
     ctx.strokeStyle = `rgba(0,212,255,0.94)`;
     ctx.lineWidth = baseW;
     ctx.beginPath(); ctx.moveTo(-len/2, 0); ctx.lineTo(len/2, 0); ctx.stroke();
 
-    // Barcode-like segments: deliberate line rhythm suggesting cosmic syntax
-    const barCount = Math.max(5, Math.floor(len / 22));
+    // Barcode-like segments — deliberate line rhythm suggesting cosmic syntax
+    const barCount = Math.max(6, Math.floor(len / 20));
     for(let i=0;i<barCount;i++){
       const x = -len/2 + (i / barCount) * len;
-      const presence = Math.sin(i * 1.9 + Date.now() * 0.005) * 0.5 + 0.5;
-      const barW = baseW * (0.55 + 0.3 * presence + tension * 0.2);
-      const gap = baseW * 0.24;
-      ctx.strokeStyle = `rgba(11,110,245,${0.5 + presence * 0.5})`;
+      const presence = Math.sin(i * 2.05 + t * 0.005) * 0.5 + 0.5;
+      const barW = baseW * (0.52 + 0.32 * presence + tension * 0.18);
+      const gap = baseW * 0.26;
+      ctx.strokeStyle = `rgba(11,110,245,${0.48 + presence * 0.44})`;
       ctx.lineWidth = barW;
       ctx.beginPath(); ctx.moveTo(x - gap/2, 0); ctx.lineTo(x + gap/2, 0); ctx.stroke();
     }
 
-    // Dark syntax lines between bars - the underlying structure
-    ctx.strokeStyle = `rgba(2,2,4,0.45)`;
-    ctx.lineWidth = baseW * 0.35;
+    // Dark syntax lines between bars — underlying structure
+    ctx.strokeStyle = `rgba(2,2,4,0.5)`;
+    ctx.lineWidth = baseW * 0.38;
     for(let i=0;i<barCount;i++){
-      const x = -len/2 + (i / barCount) * len + baseW * 0.3;
-      ctx.beginPath(); ctx.moveTo(x, -baseW*0.9); ctx.lineTo(x, baseW*0.9); ctx.stroke();
+      const x = -len/2 + (i / barCount) * len + baseW * 0.34;
+      ctx.beginPath(); ctx.moveTo(x, -baseW*0.95); ctx.lineTo(x, baseW*0.95); ctx.stroke();
     }
 
-    // End flares anchoring into the stars
-    ctx.strokeStyle = `rgba(0,212,255,0.6)`;
-    ctx.lineWidth = baseW * 0.7;
-    ctx.beginPath(); ctx.moveTo(-len/2, 0); ctx.lineTo(-len/2 + 14, 0); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(len/2, 0); ctx.lineTo(len/2 - 14, 0); ctx.stroke();
+    // End flares anchoring into the stars — tapered connection
+    ctx.strokeStyle = `rgba(0,212,255,0.65)`;
+    ctx.lineWidth = baseW * 0.8;
+    ctx.beginPath(); ctx.moveTo(-len/2, 0); ctx.lineTo(-len/2 + 16, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(len/2, 0); ctx.lineTo(len/2 - 16, 0); ctx.stroke();
+
+    // End anchor glow
+    ctx.strokeStyle = `rgba(0,212,255,0.35)`;
+    ctx.lineWidth = baseW * 1.4;
+    ctx.beginPath(); ctx.arc(-len/2, 0, baseW*1.1, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(len/2, 0, baseW*1.1, 0, Math.PI*2); ctx.stroke();
 
     ctx.restore();
   }
 
+  // ------------------------------------------------------------------ Absence node (black hole / event horizon)
   function drawAbsence(n, t){
     const r = n.absenceRadius;
     ctx.save();
-    // Event horizon - deep ink-black disc with a subtle lensing caustic at the rim
-    const g = ctx.createRadialGradient(n.x, n.y, r*0.18, n.x, n.y, r);
-    g.addColorStop(0, '#020204');
-    g.addColorStop(0.5, '#06060a');
-    g.addColorStop(0.85, '#0a0a12');
-    g.addColorStop(1, '#020204');
+    // Event horizon — true ink-black disc
+    const g = ctx.createRadialGradient(n.x, n.y, r*0.15, n.x, n.y, r);
+    g.addColorStop(0, '#010102');
+    g.addColorStop(0.45, '#050508');
+    g.addColorStop(0.8, '#09090e');
+    g.addColorStop(1, '#010102');
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI*2); ctx.fill();
-    // Rim highlight - displaced starlight bending around the absence
-    ctx.strokeStyle = 'rgba(139,148,168,0.18)';
-    ctx.lineWidth = 1.6;
+
+    // Accretion-like bright rim — light bending at the edge
+    const rimG = ctx.createRadialGradient(n.x, n.y, r*0.88, n.x, n.y, r*1.08);
+    rimG.addColorStop(0, `rgba(0,212,255,0)`);
+    rimG.addColorStop(0.4, `rgba(0,212,255,0.18)`);
+    rimG.addColorStop(0.6, `rgba(0,212,255,0.35)`);
+    rimG.addColorStop(0.8, `rgba(0,212,255,0.12)`);
+    rimG.addColorStop(1, `rgba(0,212,255,0)`);
+    ctx.fillStyle = rimG;
+    ctx.beginPath(); ctx.arc(n.x, n.y, r*1.08, 0, Math.PI*2); ctx.fill();
+
+    // Rim highlight — displaced starlight bending around absence
+    ctx.strokeStyle = 'rgba(139,148,168,0.2)';
+    ctx.lineWidth = 1.7;
     ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI*2); ctx.stroke();
-    // Gravitational lensing ring - light-eating distortion field, brighter where light bends
-    const lg = ctx.createRadialGradient(n.x, n.y, r, n.x, n.y, r * 1.7);
-    lg.addColorStop(0, 'rgba(42,42,58,0.6)');
-    lg.addColorStop(0.5, 'rgba(74,74,96,0.25)');
+
+    // Gravitational lensing ring — light-eating distortion field
+    const lg = ctx.createRadialGradient(n.x, n.y, r, n.x, n.y, r * 1.85);
+    lg.addColorStop(0, 'rgba(42,42,58,0.65)');
+    lg.addColorStop(0.45, 'rgba(96,96,116,0.28)');
     lg.addColorStop(1, 'rgba(42,42,58,0)');
     ctx.fillStyle = lg;
-    ctx.beginPath(); ctx.arc(n.x, n.y, r * 1.7, 0, Math.PI*2); ctx.fill();
-    // Rotating contour traces - displaced starlight, missing-structure readability
-    ctx.strokeStyle = 'rgba(139,148,168,0.14)';
-    ctx.lineWidth = 1.5;
-    for(let k=0;k<8;k++){
-      const a = (k/8)*Math.PI*2 + t*0.0012;
+    ctx.beginPath(); ctx.arc(n.x, n.y, r * 1.85, 0, Math.PI*2); ctx.fill();
+
+    // Rotating contour traces — displaced starlight, missing-structure readability
+    ctx.strokeStyle = 'rgba(139,148,168,0.16)';
+    ctx.lineWidth = 1.6;
+    for(let k=0;k<10;k++){
+      const a = (k/10)*Math.PI*2 + t*0.0014;
       ctx.beginPath();
-      ctx.arc(n.x, n.y, r*1.18, a, a + 0.9); ctx.stroke();
+      ctx.arc(n.x, n.y, r*1.22, a, a + 1.0); ctx.stroke();
     }
+
+    // Inward spiral hint — structure being pulled into absence
+    ctx.strokeStyle = 'rgba(0,212,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(let s=0;s<3;s++){
+      const offset = (s/3)*Math.PI*2 + t*0.0008;
+      for(let i=0;i<=24;i++){
+        const ra = (i/24)*Math.PI*4 + offset;
+        const rr = r * (0.55 + (i/24)*0.65);
+        if(i===0) ctx.moveTo(n.x + Math.cos(ra)*rr, n.y + Math.sin(ra)*rr);
+        else ctx.lineTo(n.x + Math.cos(ra)*rr, n.y + Math.sin(ra)*rr);
+      }
+    }
+    ctx.stroke();
     ctx.restore();
   }
 
+  // ------------------------------------------------------------------ Absence span (lattice of absence)
   function drawAbsenceSpan(a, b, t){
     const dx = b.x - a.x, dy = b.y - a.y;
     const len = Math.hypot(dx, dy);
@@ -856,67 +1244,255 @@
     const midX = (a.x+b.x)/2, midY = (a.y+b.y)/2;
     ctx.save();
     ctx.translate(midX, midY); ctx.rotate(ang);
-    // Light-eating distortion field: a dark geometric span that reads as missing structure
-    ctx.fillStyle = 'rgba(8,8,12,0.9)';
+
+    // Light-eating distortion field — dark geometric span
+    ctx.fillStyle = 'rgba(6,6,10,0.92)';
     ctx.beginPath();
-    ctx.moveTo(-len/2 - 12, -16); ctx.lineTo(len/2 + 12, -16);
-    ctx.lineTo(len/2 + 12, 16); ctx.lineTo(-len/2 - 12, 16); ctx.closePath(); ctx.fill();
-    // Distortion bulge - space warping between fallen nodes
-    const bulge = Math.sin(t * 0.0015) * 4;
-    ctx.fillStyle = 'rgba(20,20,28,0.35)';
+    ctx.moveTo(-len/2 - 14, -18); ctx.lineTo(len/2 + 14, -18);
+    ctx.lineTo(len/2 + 14, 18); ctx.lineTo(-len/2 - 14, 18); ctx.closePath(); ctx.fill();
+
+    // Warp bulge — space warping between fallen nodes
+    const bulge = Math.sin(t * 0.0014) * 5;
+    const g = ctx.createLinearGradient(-len/2, -20, len/2, 20);
+    g.addColorStop(0, 'rgba(22,22,30,0.4)');
+    g.addColorStop(0.5, 'rgba(34,34,46,0.55)');
+    g.addColorStop(1, 'rgba(22,22,30,0.4)');
+    ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.moveTo(-len/2, -14); ctx.quadraticCurveTo(0, -14 + bulge, len/2, -14);
-    ctx.lineTo(len/2, 14); ctx.quadraticCurveTo(0, 14 - bulge, -len/2, 14); ctx.closePath(); ctx.fill();
-    // Contour traces - displaced starlight above and below the span
-    ctx.strokeStyle = 'rgba(74,74,96,0.45)';
-    ctx.lineWidth = 1.3;
+    ctx.moveTo(-len/2, -16); ctx.quadraticCurveTo(0, -16 + bulge, len/2, -16);
+    ctx.lineTo(len/2, 16); ctx.quadraticCurveTo(0, 16 - bulge, -len/2, 16); ctx.closePath(); ctx.fill();
+
+    // Contour traces — displaced starlight above and below span
+    ctx.strokeStyle = 'rgba(96,96,116,0.5)';
+    ctx.lineWidth = 1.4;
     for(let side of [-1,1]){
       ctx.beginPath();
-      for(let i=0;i<=14;i++){
-        const x = -len/2 + (i/14)*len;
-        const off = Math.sin((i/14)*Math.PI*4 + t*0.0018) * 7 * side;
+      for(let i=0;i<=16;i++){
+        const x = -len/2 + (i/16)*len;
+        const off = Math.sin((i/16)*Math.PI*4.5 + t*0.0017) * 8 * side;
         if(i===0) ctx.moveTo(x, off);
         else ctx.lineTo(x, off);
       }
       ctx.stroke();
     }
-    // Anchor flares where the span meets absence nodes
-    ctx.strokeStyle = 'rgba(139,148,168,0.16)';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(-len/2, -10); ctx.lineTo(-len/2 - 8, -10); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-len/2, 10); ctx.lineTo(-len/2 - 8, 10); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(len/2, -10); ctx.lineTo(len/2 + 8, -10); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(len/2, 10); ctx.lineTo(len/2 + 8, 10); ctx.stroke();
+
+    // Anchor flares where span meets absence nodes
+    ctx.strokeStyle = 'rgba(139,148,168,0.18)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-len/2, -11); ctx.lineTo(-len/2 - 10, -11); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-len/2, 11); ctx.lineTo(-len/2 - 10, 11); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(len/2, -11); ctx.lineTo(len/2 + 10, -11); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(len/2, 11); ctx.lineTo(len/2 + 10, 11); ctx.stroke();
+
     ctx.restore();
   }
 
+  // ------------------------------------------------------------------ Tension progress ring
   function drawTension(n, progress){
     if(progress <= 0) return;
     ctx.save(); ctx.translate(n.x, n.y);
-    const r = CFG.starBaseRadius + 18;
-    // background ring - the threshold track
-    ctx.strokeStyle = 'rgba(0,212,255,0.12)';
-    ctx.lineWidth = 4; ctx.lineCap = 'round';
+    const r = CFG.starBaseRadius + 20;
+    // threshold track
+    ctx.strokeStyle = 'rgba(0,212,255,0.14)';
+    ctx.lineWidth = 4.5; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.arc(0,0,r, 0, Math.PI*2); ctx.stroke();
-    // tension sweep - fills as threshold approaches
+    // tension sweep gradient
     const grad = ctx.createLinearGradient(-r,0,r,0);
-    grad.addColorStop(0, 'rgba(11,110,245,0.6)');
-    grad.addColorStop(0.5, 'rgba(0,212,255,0.95)');
-    grad.addColorStop(1, 'rgba(11,110,245,0.6)');
+    grad.addColorStop(0, 'rgba(11,110,245,0.65)');
+    grad.addColorStop(0.5, 'rgba(0,212,255,0.98)');
+    grad.addColorStop(1, 'rgba(11,110,245,0.65)');
     ctx.strokeStyle = grad;
-    ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.lineWidth = 5.5; ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.arc(0,0,r, -Math.PI/2, -Math.PI/2 + Math.PI*2*progress);
     ctx.stroke();
-    // threshold marker at the commit point
-    const thrR = r * (CFG.pullThreshold / (CFG.pullThreshold + 40));
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-    ctx.lineWidth = 2;
+    // threshold marker
+    const thrR = r * (CFG.pullThreshold / (CFG.pullThreshold + 44));
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.arc(0,0,thrR, -Math.PI/2 - 0.1, -Math.PI/2 + 0.1);
+    ctx.arc(0,0,thrR, -Math.PI/2 - 0.12, -Math.PI/2 + 0.12);
     ctx.stroke();
     ctx.restore();
   }
+
+  // ------------------------------------------------------------------ Collapse shockwave
+  function drawShockwave(n, t){
+    if(n.state !== 'COLLAPSING' || n.collapseT < 0.25 || n.collapseT > 0.55) return;
+    const phase = (n.collapseT - 0.25) / 0.3;
+    const r = CFG.starBaseRadius * (1.4 + phase * 3.2);
+    const alpha = 0.35 * (1 - phase);
+    ctx.save();
+    ctx.translate(n.x, n.y);
+    ctx.strokeStyle = `rgba(0,212,255,${alpha})`;
+    ctx.lineWidth = 2.5 * (1 - phase);
+    ctx.beginPath(); ctx.arc(0,0,r, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // ------------------------------------------------------------------ UI state
+  const els = {
+    cDirect: document.getElementById('cDirect'),
+    cChain: document.getElementById('cChain'),
+    cTotal: document.getElementById('cTotal'),
+    cPlanets: document.getElementById('cPlanets'),
+    cMoons: document.getElementById('cMoons'),
+    cIntact: document.getElementById('cIntact'),
+    cChainCount: document.getElementById('cChainCount'),
+    ledgerTag: document.getElementById('ledgerTag'),
+    eventsList: document.getElementById('eventsList'),
+    muteBtn: document.getElementById('muteBtn'),
+    instr: document.getElementById('instr')
+  };
+  let lastEventLen = 0;
+
+  function setInstruction(main, sub){
+    const node = els.instr.childNodes[0];
+    if(node) node.textContent = main + ' ';
+    const small = els.instr.querySelector('small');
+    if(small) small.textContent = sub;
+    els.instr.classList.add('visible');
+    setTimeout(()=> els.instr.classList.remove('visible'), 3000);
+  }
+
+  function srAnnounce(msg){
+    const sr = document.getElementById('sr-live');
+    sr.textContent = '';
+    void sr.offsetHeight;
+    sr.textContent = msg;
+  }
+
+  function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));}
+
+  function updateLedger(){
+    const c = Sim.counters();
+    els.cDirect.textContent = c.direct;
+    els.cChain.textContent = c.chain;
+    els.cTotal.textContent = c.total;
+    els.cPlanets.textContent = c.planetsLost;
+    els.cMoons.textContent = c.moonsLost;
+    els.cIntact.textContent = c.intact;
+    els.cChainCount.textContent = c.chainReactionCount;
+    els.ledgerTag.textContent = c.total + ' / 5 collapsed';
+
+    const frag = document.createDocumentFragment();
+    let has = false;
+    Sim.events.slice().reverse().forEach(ev=>{
+      if(ev.type === 'system') return;
+      has = true;
+      const div = document.createElement('div');
+      div.className = 'event ' + (ev.type === 'chain' ? 'chain' : '');
+      const when = new Date(ev.t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      div.innerHTML = `<span style="color:var(--text-dim);font-size:9.5px;">${when}</span> ` +
+        `<span class="who">${escapeHtml(ev.msg)}</span>`;
+      if(ev.detail && (ev.detail.planets && ev.detail.planets.length || ev.detail.moons && ev.detail.moons.length)){
+        const lost = [...(ev.detail.planets||[]).map(p=>`<span class="lost">- ${escapeHtml(p)}</span>`),
+                      ...(ev.detail.moons||[]).map(m=>`<span class="lost">- ${escapeHtml(m)} moon</span>`)].join(' ');
+        div.innerHTML += `<span class="lost">${lost}</span>`;
+      }
+      frag.appendChild(div);
+    });
+    if(Sim.events.length !== lastEventLen){
+      lastEventLen = Sim.events.length;
+      if(!has){
+        els.eventsList.innerHTML = '<div class="empty">Initial ledger — all zeros.</div>';
+      } else {
+        els.eventsList.innerHTML = '';
+        els.eventsList.appendChild(frag);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------ Autopsy
+  const autopsyEl = document.getElementById('autopsy');
+  const autopsyGrid = document.getElementById('autopsyGrid');
+  document.getElementById('autopsyBtn').addEventListener('click', ()=>{
+    buildAutopsy();
+    autopsyEl.style.display = 'flex';
+  });
+  document.getElementById('autopsyClose').addEventListener('click', ()=>{
+    autopsyEl.style.display = 'none';
+  });
+  function buildAutopsy(){
+    const c = Sim.counters();
+    autopsyGrid.innerHTML = '';
+    const inv = document.createElement('div'); inv.className='card';
+    inv.innerHTML = `<h3>Original inventory</h3><ul>
+      <li><b>Systems:</b> 5 intact</li>
+      <li><b>Stars:</b> 5</li>
+      <li><b>Planets:</b> ${c.origPlanets}</li>
+      <li><b>Moons/orbital:</b> ${c.origMoons}</li>
+    </ul>`;
+    autopsyGrid.appendChild(inv);
+    RAW_SYSTEMS.forEach(s=>{
+      const n = Sim.nodes.get(s.id);
+      const card = document.createElement('div'); card.className='card';
+      const planetsHtml = s.planets.map((p,i)=>{
+        const pp = n.planets.find(x=>x.id===s.id+'-p'+i);
+        return `<li>Planet ${i+1} &mdash; ${pp && pp.alive ? '<span class="intact">intact</span>' : '<span class="gone">lost</span>'}</li>`;
+      }).join('');
+      const moonHtml = s.moon ? `<li>Moon &mdash; ${(n.moon && n.moon.alive) ? '<span class="intact">intact</span>' : '<span class="gone">lost</span>'}</li>` : '';
+      card.innerHTML = `<h3>${escapeHtml(n.name)} &mdash; <span style="color:${n.state==='ABSENCE'?'var(--danger)':'var(--ok)'}">${n.state === 'ABSENCE' ? 'ABSENCE' : 'INTACT'}</span></h3>
+        <ul>${planetsHtml}${moonHtml}</ul>`;
+    autopsyGrid.appendChild(card);
+    });
+    const topo = document.createElement('div'); topo.className='card';
+    topo.innerHTML = `<h3>Connection topology</h3><ul>`;
+    Sim.edges.forEach(e=>{
+      const na = Sim.nodes.get(e.a), nb = Sim.nodes.get(e.b);
+      const bothAbsent = na.state === 'ABSENCE' && nb.state === 'ABSENCE';
+      topo.innerHTML += `<li>${escapeHtml(na.name)} &harr; ${escapeHtml(nb.name)} &mdash; ${bothAbsent ? '<span class="gone">absence span</span>' : '<span class="intact">linked</span>'}</li>`;
+    });
+    topo.innerHTML += '</ul>';
+    autopsyGrid.appendChild(topo);
+    document.getElementById('autopsyTitle').textContent = `Aftermath / Autopsy — ${c.total} / 5 collapsed`;
+  }
+
+  // ------------------------------------------------------------------ Reset
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    document.getElementById('confirm').style.display = 'flex';
+  });
+  document.getElementById('resetCancel').addEventListener('click', ()=>{
+    document.getElementById('confirm').style.display = 'none';
+  });
+  document.getElementById('resetConfirm').addEventListener('click', ()=>{
+    document.getElementById('confirm').style.display = 'none';
+    cancelKeyboardPull();
+    if(Input.active) cancelGrip();
+    Sim.reset();
+    updateLedger();
+    buildAutopsy();
+    setInstruction('Universe reset.', 'Five intact stars restored. Ledger zeroed.');
+    srAnnounce('Universe reset. All five systems restored. Ledger zeroed.');
+  });
+
+  document.getElementById('muteBtn').addEventListener('click', ()=>{
+    const m = !Audio.isMuted();
+    Audio.setMuted(m);
+    document.getElementById('muteBtn').textContent = m ? '&#128263;' : '&#9635;';
+    document.getElementById('muteBtn').ariaPressed = m;
+    document.getElementById('muteBtn').classList.toggle('muted', m);
+    document.getElementById('muteBtn').setAttribute('aria-label', m ? 'Unmute sound' : 'Mute sound');
+  });
+
+  const ledgerEl = document.getElementById('ledger');
+  const toggle = document.getElementById('ledger-toggle');
+  let ledgerOpen = true;
+  toggle.addEventListener('click', ()=>{
+    ledgerOpen = !ledgerOpen;
+    if(window.innerWidth <= 640){
+      toggle.classList.toggle('shown', ledgerOpen);
+      ledgerEl.style.display = ledgerOpen ? 'block' : 'none';
+      toggle.setAttribute('aria-pressed', ledgerOpen);
+      toggle.setAttribute('aria-label', ledgerOpen ? 'Hide destruction ledger' : 'Show destruction ledger');
+    }
+  });
+  document.getElementById('ledgerHead').addEventListener('click', ()=>{
+    const body = document.getElementById('ledgerBody');
+    const collapsed = body.style.display === 'none';
+    body.style.display = collapsed ? '' : 'none';
+    document.getElementById('ledgerHead').setAttribute('aria-expanded', collapsed);
+  });
 
   // ------------------------------------------------------------------ Input state
   const Input = {
@@ -1089,174 +1665,10 @@
       el.style.left = (n.x - 22) + 'px';
       el.style.top = (n.y - 22) + 'px';
       el.style.width = '44px'; el.style.height = '44px';
-      el.style.background = n.state === 'GRIPPED' ? 'rgba(255,255,255,0.12)' : 'rgba(0,212,255,0.06)';
+      el.style.background = n.state === 'GRIPPED' ? 'rgba(255,255,255,0.14)' : 'rgba(0,212,255,0.07)';
       el.classList.toggle('gripped', n.state === 'GRIPPED');
     });
   }
-
-  // ------------------------------------------------------------------ UI
-  const els = {
-    cDirect: document.getElementById('cDirect'),
-    cChain: document.getElementById('cChain'),
-    cTotal: document.getElementById('cTotal'),
-    cPlanets: document.getElementById('cPlanets'),
-    cMoons: document.getElementById('cMoons'),
-    cIntact: document.getElementById('cIntact'),
-    cChainCount: document.getElementById('cChainCount'),
-    ledgerTag: document.getElementById('ledgerTag'),
-    eventsList: document.getElementById('eventsList'),
-    muteBtn: document.getElementById('muteBtn'),
-    instr: document.getElementById('instr')
-  };
-  let lastEventLen = 0;
-
-  function setInstruction(main, sub){
-    const node = els.instr.childNodes[0];
-    if(node) node.textContent = main + ' ';
-    const small = els.instr.querySelector('small');
-    if(small) small.textContent = sub;
-    els.instr.classList.add('visible');
-    setTimeout(()=> els.instr.classList.remove('visible'), 3000);
-  }
-
-  function srAnnounce(msg){
-    const sr = document.getElementById('sr-live');
-    sr.textContent = '';
-    void sr.offsetHeight;
-    sr.textContent = msg;
-  }
-
-  function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));}
-
-  function updateLedger(){
-    const c = Sim.counters();
-    els.cDirect.textContent = c.direct;
-    els.cChain.textContent = c.chain;
-    els.cTotal.textContent = c.total;
-    els.cPlanets.textContent = c.planetsLost;
-    els.cMoons.textContent = c.moonsLost;
-    els.cIntact.textContent = c.intact;
-    els.cChainCount.textContent = c.chainReactionCount;
-    els.ledgerTag.textContent = c.total + ' / 5 collapsed';
-
-    const frag = document.createDocumentFragment();
-    let has = false;
-    Sim.events.slice().reverse().forEach(ev=>{
-      if(ev.type === 'system') return;
-      has = true;
-      const div = document.createElement('div');
-      div.className = 'event ' + (ev.type === 'chain' ? 'chain' : '');
-      const when = new Date(ev.t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-      div.innerHTML = `<span style="color:var(--text-dim);font-size:9.5px;">${when}</span> ` +
-        `<span class="who">${escapeHtml(ev.msg)}</span>`;
-      if(ev.detail && (ev.detail.planets && ev.detail.planets.length || ev.detail.moons && ev.detail.moons.length)){
-        const lost = [...(ev.detail.planets||[]).map(p=>`<span class="gone">- ${escapeHtml(p)}</span>`),
-                      ...(ev.detail.moons||[]).map(m=>`<span class="gone">- ${escapeHtml(m)} moon</span>`)].join(' ');
-        div.innerHTML += `<span class="lost">${lost}</span>`;
-      }
-      frag.appendChild(div);
-    });
-    if(Sim.events.length !== lastEventLen){
-      lastEventLen = Sim.events.length;
-      if(!has){
-        els.eventsList.innerHTML = '<div class="empty">Initial ledger &mdash; all zeros.</div>';
-      } else {
-        els.eventsList.innerHTML = '';
-        els.eventsList.appendChild(frag);
-      }
-    }
-  }
-
-  // ------------------------------------------------------------------ Autopsy
-  const autopsyEl = document.getElementById('autopsy');
-  const autopsyGrid = document.getElementById('autopsyGrid');
-  document.getElementById('autopsyBtn').addEventListener('click', ()=>{
-    buildAutopsy();
-    autopsyEl.style.display = 'flex';
-  });
-  document.getElementById('autopsyClose').addEventListener('click', ()=>{
-    autopsyEl.style.display = 'none';
-  });
-  function buildAutopsy(){
-    const c = Sim.counters();
-    autopsyGrid.innerHTML = '';
-    const inv = document.createElement('div'); inv.className='card';
-    inv.innerHTML = `<h3>Original inventory</h3><ul>
-      <li><b>Systems:</b> 5 intact</li>
-      <li><b>Stars:</b> 5</li>
-      <li><b>Planets:</b> ${c.origPlanets}</li>
-      <li><b>Moons/orbital:</b> ${c.origMoons}</li>
-    </ul>`;
-    autopsyGrid.appendChild(inv);
-    RAW_SYSTEMS.forEach(s=>{
-      const n = Sim.nodes.get(s.id);
-      const card = document.createElement('div'); card.className='card';
-      const planetsHtml = s.planets.map((p,i)=>{
-        const pp = n.planets.find(x=>x.id===s.id+'-p'+i);
-        return `<li>Planet ${i+1} &mdash; ${pp && pp.alive ? '<span class="intact">intact</span>' : '<span class="gone">lost</span>'}</li>`;
-      }).join('');
-      const moonHtml = s.moon ? `<li>Moon &mdash; ${(n.moon && n.moon.alive) ? '<span class="intact">intact</span>' : '<span class="gone">lost</span>'}</li>` : '';
-      card.innerHTML = `<h3>${escapeHtml(n.name)} &mdash; <span style="color:${n.state==='ABSENCE'?'var(--danger)':'var(--ok)'}">${n.state === 'ABSENCE' ? 'ABSENCE' : 'INTACT'}</span></h3>
-        <ul>${planetsHtml}${moonHtml}</ul>`;
-      autopsyGrid.appendChild(card);
-    });
-    const topo = document.createElement('div'); topo.className='card';
-    topo.innerHTML = `<h3>Connection topology</h3><ul>`;
-    Sim.edges.forEach(e=>{
-      const na = Sim.nodes.get(e.a), nb = Sim.nodes.get(e.b);
-      const bothAbsent = na.state === 'ABSENCE' && nb.state === 'ABSENCE';
-      topo.innerHTML += `<li>${escapeHtml(na.name)} &harr; ${escapeHtml(nb.name)} &mdash; ${bothAbsent ? '<span class="gone">absence span</span>' : '<span class="intact">linked</span>'}</li>`;
-    });
-    topo.innerHTML += '</ul>';
-    autopsyGrid.appendChild(topo);
-    document.getElementById('autopsyTitle').textContent = `Aftermath / Autopsy &mdash; ${c.total} / 5 collapsed`;
-  }
-
-  // ------------------------------------------------------------------ Reset
-  document.getElementById('resetBtn').addEventListener('click', ()=>{
-    document.getElementById('confirm').style.display = 'flex';
-  });
-  document.getElementById('resetCancel').addEventListener('click', ()=>{
-    document.getElementById('confirm').style.display = 'none';
-  });
-  document.getElementById('resetConfirm').addEventListener('click', ()=>{
-    document.getElementById('confirm').style.display = 'none';
-    cancelKeyboardPull();
-    if(Input.active) cancelGrip();
-    Sim.reset();
-    updateLedger();
-    buildAutopsy();
-    setInstruction('Universe reset.', 'Five intact stars restored. Ledger zeroed.');
-    srAnnounce('Universe reset. All five systems restored. Ledger zeroed.');
-  });
-
-  document.getElementById('muteBtn').addEventListener('click', ()=>{
-    const m = !Audio.isMuted();
-    Audio.setMuted(m);
-    document.getElementById('muteBtn').textContent = m ? '&#128263;' : '&#9635;';
-    document.getElementById('muteBtn').ariaPressed = m;
-    document.getElementById('muteBtn').classList.toggle('muted', m);
-    document.getElementById('muteBtn').setAttribute('aria-label', m ? 'Unmute sound' : 'Mute sound');
-  });
-
-  const ledgerEl = document.getElementById('ledger');
-  const toggle = document.getElementById('ledger-toggle');
-  let ledgerOpen = true;
-  toggle.addEventListener('click', ()=>{
-    ledgerOpen = !ledgerOpen;
-    if(window.innerWidth <= 640){
-      toggle.classList.toggle('shown', ledgerOpen);
-      ledgerEl.style.display = ledgerOpen ? 'block' : 'none';
-      toggle.setAttribute('aria-pressed', ledgerOpen);
-      toggle.setAttribute('aria-label', ledgerOpen ? 'Hide destruction ledger' : 'Show destruction ledger');
-    }
-  });
-  document.getElementById('ledgerHead').addEventListener('click', ()=>{
-    const body = document.getElementById('ledgerBody');
-    const collapsed = body.style.display === 'none';
-    body.style.display = collapsed ? '' : 'none';
-    document.getElementById('ledgerHead').setAttribute('aria-expanded', collapsed);
-  });
 
   // ------------------------------------------------------------------ Pointer input
   function getPos(ev){
@@ -1295,14 +1707,20 @@
     last = now;
     Sim.update(dt);
 
+    const shake = Screen.getOffset();
+    ctx.save();
+    ctx.translate(shake.x, shake.y);
+
     ctx.clearRect(0, 0, W, H);
     drawStarfield(now);
 
+    // absence spans first (behind stars)
     Sim.edges.forEach(e=>{
       const na = Sim.nodes.get(e.a), nb = Sim.nodes.get(e.b);
       if(na.state === 'ABSENCE' && nb.state === 'ABSENCE') drawAbsenceSpan(na, nb, now);
     });
 
+    // filaments between living systems
     Sim.edges.forEach(e=>{
       const na = Sim.nodes.get(e.a), nb = Sim.nodes.get(e.b);
       if(na.state === 'ABSENCE' || nb.state === 'ABSENCE') return;
@@ -1316,19 +1734,26 @@
       drawFilament(na, nb, pulled, pullOffset, clamp(tension,0,1));
     });
 
+    // systems
     Sim.nodes.forEach(n=>{
       drawOrbits(n, now);
       if(n.state === 'ABSENCE') drawAbsence(n, now);
       else drawStar(n, now);
     });
 
+    // collapse shockwave
+    Sim.nodes.forEach(n=> drawShockwave(n, now));
+
+    // tension ring on gripped star
     if(Input.active){
       const n = Sim.nodes.get(Input.nodeId);
       drawTension(n, n.gripProgress);
     }
 
-    updateKFilament();
+    // particles
+    Particles.draw(ctx, now);
 
+    // pointer pull line
     if(Input.active){
       const n = Sim.nodes.get(Input.nodeId);
       ctx.save();
@@ -1337,19 +1762,21 @@
       ctx.rotate(ang);
       const d = Math.hypot(Input.cur.x - n.x, Input.cur.y - n.y);
       ctx.strokeStyle = 'rgba(0,212,255,0.35)';
-      ctx.lineWidth = 2; ctx.setLineDash([8,6]);
-      ctx.beginPath(); ctx.moveTo(CFG.starBaseRadius+4, 0); ctx.lineTo(Math.min(d, CFG.pullThreshold*1.2)-6, 0); ctx.stroke(); ctx.setLineDash([]);
+      ctx.lineWidth = 2; ctx.setLineDash([9,7]);
+      ctx.beginPath(); ctx.moveTo(CFG.starBaseRadius+5, 0); ctx.lineTo(Math.min(d, CFG.pullThreshold*1.25)-7, 0); ctx.stroke(); ctx.setLineDash([]);
       ctx.restore();
     }
 
+    ctx.restore();
+
+    updateKFilament();
     updateLedger();
     requestAnimationFrame(frame);
   }
+  requestAnimationFrame(frame);
 
   // Expose sim for external inspection/testing (read-only).
-  window.__DBG = { Sim, CFG, Audio, Input };
-
-  requestAnimationFrame(frame);
+  window.__DBG = { Sim, CFG, Audio, Input, Particles, Screen };
 
   setInstruction('Find the filament', 'Hover or focus a star to reveal its graspable azure strand.');
   updateLedger();
