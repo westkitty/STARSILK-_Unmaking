@@ -13,6 +13,7 @@
     --azure:#00d4ff;
     --azure-deep:#0b6ef5;
     --azure-dim:#1e4a8a;
+    --azure-glow:rgba(0,212,255,0.35);
     --absence:#0d0d14;
     --absence-edge:#2a2a3a;
     --lens:#161626;
@@ -42,18 +43,32 @@
     display:flex;align-items:center;justify-content:space-between;
     padding:0 20px;
     z-index:50;
-    background:linear-gradient(180deg, rgba(4,4,8,0.75) 0%, transparent 100%);
-    backdrop-filter:blur(6px);
-    border-bottom:1px solid rgba(139,148,168,0.12);
+    background:linear-gradient(180deg, rgba(4,4,8,0.82) 0%, rgba(2,2,4,0.45) 100%);
+    backdrop-filter:blur(10px) saturate(1.1);
+    border-bottom:1px solid rgba(0,212,255,0.14);
+    box-shadow:0 4px 20px rgba(0,0,0,0.55);
   }
   #title-block{display:flex;flex-direction:column;line-height:1.05;}
   #title-block .appname{
-    font-family:var(--font-display);font-weight:900;letter-spacing:0.14em;font-size:15px;
+    font-family:var(--font-display);font-weight:900;letter-spacing:0.42em;font-size:17px;
     color:var(--azure);text-transform:uppercase;
+    display:inline-block;
+    text-shadow:
+      -1px -1px 0 rgba(11,110,245,0.55),
+       1px  1px 0 rgba(2,2,4,0.85),
+       0 0 26px rgba(0,212,255,0.22);
+    position:relative;
+  }
+  #title-block .appname::before{
+    content:'';
+    position:absolute;inset:0;left:-1.2em;top:50%;
+    transform:translatey(-50%) scalex(0.85);
+    border-left:2px solid rgba(0,212,255,0.45);
+    opacity:0.6;
   }
   #title-block .descriptor{
-    font-size:9.5px;letter-spacing:0.22em;color:var(--text-dim);text-transform:uppercase;
-    opacity:0.85;white-space:nowrap;
+    font-size:9.5px;letter-spacing:0.32em;color:var(--text-dim);text-transform:uppercase;
+    opacity:0.85;white-space:nowrap;transform:translatex(1px);
   }
   #controls{display:flex;align-items:center;gap:14px;white-space:nowrap;}
   .togglegroup{display:flex;align-items:center;gap:8px;border:1px solid rgba(139,148,168,0.25);
@@ -160,13 +175,20 @@
 
   /* ---------- Keyboard filaments (focus targets) ---------- */
   .kfilament{
-    position:absolute;border-radius:50%;border:2px solid rgba(0,212,255,0.35);
-    background:rgba(0,212,255,0.06);cursor:pointer;
+    position:absolute;border-radius:50%;border:2px solid rgba(0,212,255,0.4);
+    background:radial-gradient(circle at 40% 40%, rgba(0,212,255,0.25) 0%, rgba(2,6,14,0.6) 70%, #020204 100%);
+    box-shadow:0 0 14px rgba(0,212,255,0.25), inset 0 0 8px rgba(0,212,255,0.2);
+    cursor:pointer;
     display:inline-flex;align-items:center;justify-content:center;font-size:10px;letter-spacing:0.1em;
-    color:var(--azure);text-transform:uppercase;z-index:45;transition:border-color .2s,box-shadow .2s,background .2s;
+    color:var(--azure);text-transform:uppercase;z-index:45;transition:border-color .2s,box-shadow .2s,transform .1s;
   }
-  .kfilament:focus-visible{outline:none;border-color:var(--azure);box-shadow:0 0 0 4px rgba(0,212,255,0.25);background:rgba(0,212,255,0.14);}
-  .kfilament.gripped{border-color:#fff;background:rgba(255,255,255,0.12);color:#fff;}
+  .kfilament::after{
+    content:'';
+    position:absolute;width:6px;height:6px;border-radius:50%;background:var(--azure);
+    box-shadow:0 0 10px var(--azure);top:50%;left:50%;transform:translate(-50%,-50%);
+  }
+  .kfilament:focus-visible{outline:none;border-color:#fff;box-shadow:0 0 0 4px rgba(0,212,255,0.35),0 0 20px rgba(0,212,255,0.5);background:rgba(0,212,255,0.18);}
+  .kfilament.gripped{border-color:#fff;background:radial-gradient(circle at 40% 40%, rgba(255,255,255,0.25) 0%, rgba(0,212,255,0.4) 70%, #0a0a12 100%);color:#fff;transform:scale(1.08);box-shadow:0 0 20px rgba(255,255,255,0.35);}
 
   /* ---------- Reduced motion ---------- */
   @media (prefers-reduced-motion: reduce){
@@ -570,6 +592,34 @@
 
   Sim.init();
 
+  // Distant starfield - pinpricks in the ink-deep void, slow drift and twinkle.
+  // Not a nebula wallpaper; just enough depth to make the void feel immense.
+  const STARFIELD_COUNT = 120;
+  const starfield = [];
+  for(let i=0;i<STARFIELD_COUNT;i++){
+    starfield.push({
+      x: Math.random(), y: Math.random(),
+      mag: 0.3 + Math.random() * 0.7,
+      twinkle: Math.random() * Math.PI * 2,
+      speed: 0.00015 + Math.random() * 0.00025
+    });
+  }
+
+  function drawStarfield(t){
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    starfield.forEach(s=>{
+      const a = (s.x * W + s.y * H * 0.5 + t * s.speed * 60) % 1;
+      const b = (s.y * H + s.x * W * 0.3 - t * s.speed * 40) % 1;
+      const px = a * W, py = b * H;
+      const alpha = s.mag * (0.4 + 0.6 * Math.sin(t * 0.002 + s.twinkle));
+      if(alpha <= 0) return;
+      ctx.fillStyle = `rgba(200,216,255,${alpha})`;
+      ctx.beginPath(); ctx.arc(px, py, s.mag * 0.5 + 0.4, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.restore();
+  }
+
   // ------------------------------------------------------------------ Rendering
   const canvas = document.getElementById('stage');
   const ctx = canvas.getContext('2d', {alpha:false});
@@ -605,60 +655,99 @@
   function drawStar(n, t){
     const r = CFG.starBaseRadius;
     const ox = Math.sin(t * 0.003) * n.angleOffset;
-    // outer atmospheric glow
+    // collapse contraction: core pulls violently inward before surrender
+    const contract = n.state === 'COLLAPSING' ? (1 - n.collapseT) : 1;
+    const cr = r * Math.max(0.12, contract);
+    const glowR = r * (2.6 - 1.4 * (1 - contract));
     ctx.save();
     ctx.translate(n.x + ox, n.y);
-    ctx.fillStyle = gradStar(n.x, n.y, r * 2.6, n.hue, n.state !== 'ABSENCE');
-    ctx.beginPath(); ctx.arc(0, 0, r * 2.6, 0, Math.PI*2); ctx.fill();
-    const layers = 3;
-    for(let i=0;i<layers;i++){
-      const lr = r * (0.78 - i * 0.22);
-      ctx.strokeStyle = `hsla(${n.hue}, 70%, 65%, ${0.35 - i * 0.08})`;
-      ctx.lineWidth = 2 - i * 0.5;
-      ctx.beginPath(); ctx.arc(0, 0, lr, 0, Math.PI*2); ctx.stroke();
+    // outer atmospheric glow (fades as collapse commits)
+    if(n.state !== 'ABSENCE'){
+      ctx.globalAlpha = 0.9 - 0.5 * (1 - contract);
+      ctx.fillStyle = gradStar(n.x, n.y, glowR, n.hue, true);
+      ctx.beginPath(); ctx.arc(0, 0, glowR, 0, Math.PI*2); ctx.fill();
     }
-    ctx.fillStyle = gradStar(n.x, n.y, r, n.hue, true);
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.beginPath(); ctx.arc(-r*0.28, -r*0.28, r*0.3, 0, Math.PI*2); ctx.fill();
+    // structural rings - delicate orbital engraving around the core
+    const layers = 4;
+    for(let i=0;i<layers;i++){
+      const lr = cr * (0.92 - i * 0.2);
+      if(lr <= 0) continue;
+      ctx.strokeStyle = `hsla(${n.hue}, 70%, ${55 - i*12}%, ${0.5 - i*0.12})`;
+      ctx.lineWidth = (2 - i * 0.5) * contract;
+      ctx.setLineDash(i % 2 === 0 ? [6, 7] : [2, 5]);
+      ctx.lineDashOffset = -t * 15;
+      ctx.beginPath(); ctx.arc(0, 0, lr, 0, Math.PI*2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    // core body - luminous center that contracts inward on surrender
+    if(n.state !== 'ABSENCE'){
+      ctx.fillStyle = gradStar(n.x, n.y, cr, n.hue, true);
+      ctx.beginPath(); ctx.arc(0, 0, cr, 0, Math.PI*2); ctx.fill();
+      // bright core highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.beginPath(); ctx.arc(-cr*0.25, -cr*0.25, cr*0.3, 0, Math.PI*2); ctx.fill();
+    }
+    // grip fractures - the silk is being pulled
     if(n.state === 'GRIPPED'){
-      ctx.strokeStyle = 'rgba(0,212,255,0.45)'; ctx.lineWidth = 1.6;
+      ctx.strokeStyle = 'rgba(0,212,255,0.5)'; ctx.lineWidth = 1.8;
       ctx.beginPath();
-      for(let k=0;k<5;k++){
-        const a = (k/5) * Math.PI * 2 + t*0.002;
-        ctx.moveTo(Math.cos(a)*r*0.5, Math.sin(a)*r*0.5);
-        ctx.lineTo(Math.cos(a)*r*1.05, Math.sin(a)*r*1.05);
+      for(let k=0;k<6;k++){
+        const a = (k/6) * Math.PI * 2 + t*0.003;
+        ctx.moveTo(Math.cos(a)*cr*0.45, Math.sin(a)*cr*0.45);
+        ctx.lineTo(Math.cos(a)*cr*1.15, Math.sin(a)*cr*1.15);
       }
       ctx.stroke();
     }
     ctx.restore();
   }
 
+  // Per-system orbital architecture signatures (distinct beyond hue alone).
+  const ORBIT_STYLE = {
+    sys1:{dash:[7,11],dir:1,  phase:0},
+    sys2:{dash:[5,9],  dir:-1, phase:0.7},
+    sys3:{dash:[9,13], dir:1,  phase:1.4},
+    sys4:{dash:[4,14], dir:-1, phase:2.1},
+    sys5:{dash:[11,7], dir:1,  phase:2.8},
+  };
+
   function drawOrbits(n, t){
     if(n.state === 'ABSENCE') return;
+    const style = ORBIT_STYLE[n.id] || ORBIT_STYLE.sys1;
     ctx.save(); ctx.translate(n.x, n.y);
+    const grip = n.state === 'GRIPPED';
+    const tremble = grip ? Math.sin(t * 0.02 + style.phase) * 1.2 : 0;
+    // collapse: orbits fail and planets spiral inward before vanishing
+    const coll = n.state === 'COLLAPSING' ? n.collapseT : 0;
     n.planets.forEach(p=>{
       if(!p.alive) return;
-      ctx.strokeStyle = 'rgba(139,148,168,0.16)';
-      ctx.lineWidth = 1; ctx.setLineDash([6, 10]); ctx.lineDashOffset = -t * 20;
-      ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = `rgba(139,148,168,${0.16 * (1 - coll * 0.8)})`;
+      ctx.lineWidth = 1; ctx.setLineDash(style.dash); ctx.lineDashOffset = -t * 18 * style.dir + (p.idx * 5);
+      const orbitR = p.r + tremble;
+      ctx.beginPath(); ctx.arc(0, 0, orbitR, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+      // during collapse, planets spiral toward the center (failing orbits)
+      const spiral = coll * 0.9;
+      const pa = p.angle + (style.dir * coll * 1.5);
+      const pr = p.r * (1 - spiral);
       ctx.fillStyle = p.color;
-      ctx.beginPath(); ctx.arc(Math.cos(p.angle)*p.r, Math.sin(p.angle)*p.r, p.size, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(Math.cos(pa)*pr, Math.sin(pa)*pr, p.size * (1 - coll*0.5), 0, Math.PI*2); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.beginPath(); ctx.arc(Math.cos(p.angle)*p.r - p.size*0.35, Math.sin(p.angle)*p.r - p.size*0.35, p.size*0.3, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(Math.cos(pa)*pr - p.size*0.35, Math.sin(pa)*pr - p.size*0.35, p.size*0.3 * (1-coll*0.5), 0, Math.PI*2); ctx.fill();
     });
     if(n.moon && n.moon.alive){
       const p = n.planets.find(pp=>pp.id === n.moon.planet);
       if(p && p.alive){
-        ctx.strokeStyle = 'rgba(139,148,168,0.12)';
+        const coll = n.state === 'COLLAPSING' ? n.collapseT : 0;
+        ctx.strokeStyle = `rgba(139,148,168,${0.12 * (1 - coll * 0.8)})`;
         ctx.lineWidth = 0.8;
         ctx.beginPath();
-        ctx.arc(Math.cos(p.angle)*p.r, Math.sin(p.angle)*p.r, n.moon.r, 0, Math.PI*2);
+        const mR = n.moon.r + tremble;
+        ctx.arc(Math.cos(p.angle)*p.r*(1-coll*0.9), Math.sin(p.angle)*p.r*(1-coll*0.9), mR, 0, Math.PI*2);
         ctx.stroke();
         ctx.fillStyle = n.moon.color;
         ctx.beginPath();
-        ctx.arc(Math.cos(p.angle)*p.r + Math.cos(n.moon.angle)*n.moon.r,
-                Math.sin(p.angle)*p.r + Math.sin(n.moon.angle)*n.moon.r, n.moon.size, 0, Math.PI*2);
+        ctx.arc(Math.cos(p.angle)*p.r*(1-coll*0.9) + Math.cos(n.moon.angle)*n.moon.r*(1-coll*0.5),
+                Math.sin(p.angle)*p.r*(1-coll*0.9) + Math.sin(n.moon.angle)*n.moon.r*(1-coll*0.5),
+                n.moon.size * (1 - coll*0.5), 0, Math.PI*2);
         ctx.fill();
       }
     }
@@ -670,44 +759,59 @@
     ctx.save();
     const dx = b.x - a.x, dy = b.y - a.y;
     const len = Math.hypot(dx, dy);
-    const ux = dx / len, uy = dy / len;
     const ang = Math.atan2(dy, dx);
 
+    // Subtle tension curvature: the silk bows under strain toward the pull point.
     let midX = (a.x+b.x)/2, midY = (a.y+b.y)/2;
     if(gripped && pullOffset){
-      midX = a.x + pullOffset.x * 0.45;
-      midY = a.y + pullOffset.y * 0.45;
+      const nx = -Math.sin(ang), ny = Math.cos(ang);
+      const pullDot = pullOffset.x * nx + pullOffset.y * ny;
+      midX = a.x + dx*0.5 + nx * (pullDot * 0.35);
+      midY = a.y + dy*0.5 + ny * (pullDot * 0.35);
     }
 
     ctx.translate(midX, midY);
     ctx.rotate(ang);
 
-    const baseW = 9 + tension * 14;
-    const pulse = Math.sin(Date.now() * 0.015) * (1 + tension * 0.5);
+    const baseW = 8 + tension * 14;
+    const pulse = Math.sin(Date.now() * 0.012 + (a.id<b.id?0:1)) * (1 + tension * 0.4);
 
-    ctx.strokeStyle = `rgba(0,212,255,${0.18 + tension*0.25})`;
-    ctx.lineWidth = baseW * 1.9 + pulse;
+    // Outer luminous aura (dimensional depth)
+    ctx.strokeStyle = `rgba(0,212,255,${0.14 + tension*0.18})`;
+    ctx.lineWidth = baseW * 2.2 + pulse * 2;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.beginPath(); ctx.moveTo(-len/2, 0); ctx.lineTo(len/2, 0); ctx.stroke();
 
-    ctx.strokeStyle = `rgba(0,212,255,0.92)`;
+    // Core silk bar - bright azure
+    ctx.strokeStyle = `rgba(0,212,255,0.94)`;
     ctx.lineWidth = baseW;
     ctx.beginPath(); ctx.moveTo(-len/2, 0); ctx.lineTo(len/2, 0); ctx.stroke();
 
-    const barCount = Math.max(4, Math.floor(len / 24));
+    // Barcode-like segments: deliberate line rhythm suggesting cosmic syntax
+    const barCount = Math.max(5, Math.floor(len / 22));
     for(let i=0;i<barCount;i++){
       const x = -len/2 + (i / barCount) * len;
-      const barW = baseW * (0.62 + 0.28 * Math.sin(i * 1.7 + Date.now() * 0.004));
-      const gap = baseW * 0.22;
-      ctx.strokeStyle = `rgba(11,110,245,${0.9 - (i%3)*0.18})`;
+      const presence = Math.sin(i * 1.9 + Date.now() * 0.005) * 0.5 + 0.5;
+      const barW = baseW * (0.55 + 0.3 * presence + tension * 0.2);
+      const gap = baseW * 0.24;
+      ctx.strokeStyle = `rgba(11,110,245,${0.5 + presence * 0.5})`;
       ctx.lineWidth = barW;
       ctx.beginPath(); ctx.moveTo(x - gap/2, 0); ctx.lineTo(x + gap/2, 0); ctx.stroke();
     }
 
-    ctx.strokeStyle = `rgba(0,212,255,0.55)`;
-    ctx.lineWidth = baseW * 0.6;
-    ctx.beginPath(); ctx.moveTo(-len/2, 0); ctx.lineTo(-len/2 + 12, 0); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(len/2, 0); ctx.lineTo(len/2 - 12, 0); ctx.stroke();
+    // Dark syntax lines between bars - the underlying structure
+    ctx.strokeStyle = `rgba(2,2,4,0.45)`;
+    ctx.lineWidth = baseW * 0.35;
+    for(let i=0;i<barCount;i++){
+      const x = -len/2 + (i / barCount) * len + baseW * 0.3;
+      ctx.beginPath(); ctx.moveTo(x, -baseW*0.9); ctx.lineTo(x, baseW*0.9); ctx.stroke();
+    }
+
+    // End flares anchoring into the stars
+    ctx.strokeStyle = `rgba(0,212,255,0.6)`;
+    ctx.lineWidth = baseW * 0.7;
+    ctx.beginPath(); ctx.moveTo(-len/2, 0); ctx.lineTo(-len/2 + 14, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(len/2, 0); ctx.lineTo(len/2 - 14, 0); ctx.stroke();
 
     ctx.restore();
   }
@@ -715,24 +819,32 @@
   function drawAbsence(n, t){
     const r = n.absenceRadius;
     ctx.save();
-    const g = ctx.createRadialGradient(n.x, n.y, r*0.25, n.x, n.y, r);
-    g.addColorStop(0, '#030305');
-    g.addColorStop(0.55, '#07070a');
+    // Event horizon - deep ink-black disc with a subtle lensing caustic at the rim
+    const g = ctx.createRadialGradient(n.x, n.y, r*0.18, n.x, n.y, r);
+    g.addColorStop(0, '#020204');
+    g.addColorStop(0.5, '#06060a');
+    g.addColorStop(0.85, '#0a0a12');
     g.addColorStop(1, '#020204');
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI*2); ctx.fill();
-    const lg = ctx.createRadialGradient(n.x, n.y, r, n.x, n.y, r * 1.5);
-    lg.addColorStop(0, 'rgba(42,42,58,0.55)');
-    lg.addColorStop(0.6, 'rgba(42,42,58,0.15)');
+    // Rim highlight - displaced starlight bending around the absence
+    ctx.strokeStyle = 'rgba(139,148,168,0.18)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI*2); ctx.stroke();
+    // Gravitational lensing ring - light-eating distortion field, brighter where light bends
+    const lg = ctx.createRadialGradient(n.x, n.y, r, n.x, n.y, r * 1.7);
+    lg.addColorStop(0, 'rgba(42,42,58,0.6)');
+    lg.addColorStop(0.5, 'rgba(74,74,96,0.25)');
     lg.addColorStop(1, 'rgba(42,42,58,0)');
     ctx.fillStyle = lg;
-    ctx.beginPath(); ctx.arc(n.x, n.y, r * 1.5, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = 'rgba(139,148,168,0.12)';
-    ctx.lineWidth = 1.4;
-    for(let k=0;k<6;k++){
-      const a = (k/6)*Math.PI*2 + t*0.0015;
+    ctx.beginPath(); ctx.arc(n.x, n.y, r * 1.7, 0, Math.PI*2); ctx.fill();
+    // Rotating contour traces - displaced starlight, missing-structure readability
+    ctx.strokeStyle = 'rgba(139,148,168,0.14)';
+    ctx.lineWidth = 1.5;
+    for(let k=0;k<8;k++){
+      const a = (k/8)*Math.PI*2 + t*0.0012;
       ctx.beginPath();
-      ctx.arc(n.x, n.y, r*1.12, a, a + 0.7); ctx.stroke();
+      ctx.arc(n.x, n.y, r*1.18, a, a + 0.9); ctx.stroke();
     }
     ctx.restore();
   }
@@ -740,38 +852,68 @@
   function drawAbsenceSpan(a, b, t){
     const dx = b.x - a.x, dy = b.y - a.y;
     const len = Math.hypot(dx, dy);
-    const ux = dx/len, uy = dy/len;
     const ang = Math.atan2(dy, dx);
     const midX = (a.x+b.x)/2, midY = (a.y+b.y)/2;
     ctx.save();
     ctx.translate(midX, midY); ctx.rotate(ang);
-    ctx.fillStyle = 'rgba(10,10,14,0.85)';
+    // Light-eating distortion field: a dark geometric span that reads as missing structure
+    ctx.fillStyle = 'rgba(8,8,12,0.9)';
     ctx.beginPath();
-    ctx.moveTo(-len/2 - 10, -14); ctx.lineTo(len/2 + 10, -14);
-    ctx.lineTo(len/2 + 10, 14); ctx.lineTo(-len/2 - 10, 14); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = 'rgba(74,74,96,0.4)';
-    ctx.lineWidth = 1.2;
+    ctx.moveTo(-len/2 - 12, -16); ctx.lineTo(len/2 + 12, -16);
+    ctx.lineTo(len/2 + 12, 16); ctx.lineTo(-len/2 - 12, 16); ctx.closePath(); ctx.fill();
+    // Distortion bulge - space warping between fallen nodes
+    const bulge = Math.sin(t * 0.0015) * 4;
+    ctx.fillStyle = 'rgba(20,20,28,0.35)';
+    ctx.beginPath();
+    ctx.moveTo(-len/2, -14); ctx.quadraticCurveTo(0, -14 + bulge, len/2, -14);
+    ctx.lineTo(len/2, 14); ctx.quadraticCurveTo(0, 14 - bulge, -len/2, 14); ctx.closePath(); ctx.fill();
+    // Contour traces - displaced starlight above and below the span
+    ctx.strokeStyle = 'rgba(74,74,96,0.45)';
+    ctx.lineWidth = 1.3;
     for(let side of [-1,1]){
       ctx.beginPath();
-      for(let i=0;i<=12;i++){
-        const x = -len/2 + (i/12)*len;
-        const off = Math.sin((i/12)*Math.PI*3 + t*0.002) * 6 * side;
+      for(let i=0;i<=14;i++){
+        const x = -len/2 + (i/14)*len;
+        const off = Math.sin((i/14)*Math.PI*4 + t*0.0018) * 7 * side;
         if(i===0) ctx.moveTo(x, off);
         else ctx.lineTo(x, off);
       }
       ctx.stroke();
     }
+    // Anchor flares where the span meets absence nodes
+    ctx.strokeStyle = 'rgba(139,148,168,0.16)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(-len/2, -10); ctx.lineTo(-len/2 - 8, -10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-len/2, 10); ctx.lineTo(-len/2 - 8, 10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(len/2, -10); ctx.lineTo(len/2 + 8, -10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(len/2, 10); ctx.lineTo(len/2 + 8, 10); ctx.stroke();
     ctx.restore();
   }
 
   function drawTension(n, progress){
     if(progress <= 0) return;
     ctx.save(); ctx.translate(n.x, n.y);
-    const r = CFG.starBaseRadius + 16;
-    ctx.strokeStyle = 'rgba(0,212,255,0.85)';
-    ctx.lineWidth = 3; ctx.lineCap = 'round';
+    const r = CFG.starBaseRadius + 18;
+    // background ring - the threshold track
+    ctx.strokeStyle = 'rgba(0,212,255,0.12)';
+    ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0,0,r, 0, Math.PI*2); ctx.stroke();
+    // tension sweep - fills as threshold approaches
+    const grad = ctx.createLinearGradient(-r,0,r,0);
+    grad.addColorStop(0, 'rgba(11,110,245,0.6)');
+    grad.addColorStop(0.5, 'rgba(0,212,255,0.95)');
+    grad.addColorStop(1, 'rgba(11,110,245,0.6)');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 5; ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.arc(0,0,r, -Math.PI/2, -Math.PI/2 + Math.PI*2*progress);
+    ctx.stroke();
+    // threshold marker at the commit point
+    const thrR = r * (CFG.pullThreshold / (CFG.pullThreshold + 40));
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0,0,thrR, -Math.PI/2 - 0.1, -Math.PI/2 + 0.1);
     ctx.stroke();
     ctx.restore();
   }
@@ -1154,6 +1296,7 @@
     Sim.update(dt);
 
     ctx.clearRect(0, 0, W, H);
+    drawStarfield(now);
 
     Sim.edges.forEach(e=>{
       const na = Sim.nodes.get(e.a), nb = Sim.nodes.get(e.b);
