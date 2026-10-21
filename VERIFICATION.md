@@ -36,7 +36,26 @@ The following visual asset families were inspected and materially improved (all 
 | Typography/ornament | REPAIR | Declared `'Ironfall'` font wasn't loading (fell back to generic system-ui); replaced with authored layered display treatment (letterpress shadow, border ornament) |
 | UI glass/depth | REFINE | Stronger header glass, border, shadow; ledger and control depth |
 
-**23/23 functional acceptance checks re-verified post-uplift** (sim counters, collapse, chain reactions, reconciliation, reset — all unchanged and passing).
+**26/26 functional acceptance checks re-verified post-overhaul** (sim counters, collapse, chain reactions, reconciliation, reset, particle system, screen shake — all unchanged and passing).
+
+### AAA Visual Overhaul — executed pass (this session)
+
+A comprehensive visual finishing pass was applied to the existing game, preserving all gameplay mechanics, controls, and simulation logic. All rendering is procedural Canvas 2D — no external assets, no broken dependencies, no engine change.
+
+| Asset family | Lane | Change |
+|--------------|------|--------|
+| Star cores | REFINE | Multi-layered luminous cores with structural engraving rings, inner caustic ring, off-center highlights, light-failure sequence during surrender, collapse crunch flash |
+| Absence nodes | REFINE | True ink-black event horizon, accretion-like bright rim, gravitational lensing distortion field, rotating displaced-starlight contours, inward spiral hint |
+| Absence spans (lattice) | REFINE | Light-eating distortion field, warp bulge, displaced-starlight contour traces, anchor flares at nodes |
+| Starsilk filaments | REFINE | Tapered dimensional ribbons with outer aura, core bar, barcode syntax segments, dark syntax lines, end anchor flares, tension curvature |
+| Planets/moons | REFINE | Banded surface stripes, atmospheric halo, equatorial accent, specular highlight, orbital shadow |
+| Orbits | REFINE | Concentric architectural rings per system, nodal markers, per-system dash signatures, tremble under grip |
+| Background | ENRICH | 3-layer parallax starfield with drift, twinkle, and occasional distant-sun glints |
+| Collapse VFX | ENRICH | Inward shockwave pulse, light-failure ring darkening, debris particle bursts |
+| Particles | NEW | Lightweight object pool (160 max) for debris/sparks/glimmers with physics and fade |
+| Screen effects | NEW | Subtle vignette, collapse vignette pulse, micro screen shake on collapse |
+| UI system | REFINE | Cohesive glassmorphism, Space Grotesk/IBM Plex Mono typography, micro-interaction states, focus rings |
+| Performance | OPTIMIZE | Particle object pool (reuse instead of alloc), limited draw operations, adaptive alpha fade |
 
 ## Not executed in this environment (browser-only)
 
