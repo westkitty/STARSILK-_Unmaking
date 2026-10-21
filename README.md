@@ -18,7 +18,7 @@ This is a single, self-contained HTML file with no external dependencies. It wor
 - **Touch:** Press and hold on a filament/star, then drag outward. Touch scrolling is only suppressed during an active drag.
 - **Keyboard:** `Tab` to move focus between a star's filament target, then `Enter` or `Space` to grip. Hold to confirm extraction (a confirmation threshold applies); release to cancel before it. `Escape` cancels any active grip or pull.
 - **Sound:** Optional Web Audio synthesis (stellar drone, filament tension, collapse transient, silence). Initializes only after your first gesture. Use the **sound** toggle to mute/unmute. Audio never autoplay before interaction.
-- **Reduced motion:** Respects `prefers-reduced-motion`; shaking and flashing are replaced with controlled shape, opacity, and timing changes.
+- **Reduced motion:** Respects `prefers-reduced-motion`. Shaking and flashing are replaced with controlled shape, opacity, and timing changes. The preference is honoured in the render loop (screen shake, starfield drift, twinkle), not only in CSS.
 
 ## Interface
 
@@ -39,10 +39,23 @@ This is a single, self-contained HTML file with no external dependencies. It wor
 - Counters equal the true number of unique destroyed objects; reset restores everything and zeroes the ledger.
 - Keyboard and touch users can complete the primary action; mute and reduced-motion modes function.
 
+## Rendering
+
+Everything is drawn procedurally with Canvas 2D — there are no image, font, or audio assets to load.
+
+- **Bloom** is a cached radial sprite blitted additively (`globalCompositeOperation = 'lighter'`), rather than a fresh gradient per glow per frame.
+- **Stars** are layered: corona, limb-darkened photosphere, surface granulation, structural engraving rings, inner caustic, and specular glint. During surrender the corona dies first and the core contracts inward.
+- **Absence nodes** are true ink-black event horizons with an accretion rim, a photon ring, a gravitational lensing field, and rotating displaced-starlight contours.
+- **Depth** comes from a pre-rendered nebula (rebuilt on resize at 1/6 resolution), three parallax starfield layers, and a vignette that pulses on collapse.
+- **Planets** are shaded spheres lit by their own system's star — terminator, specular, and rim light all oriented to it.
+- **Adaptive quality:** the renderer samples frame rate and steps down DPR cap, starfield density, and effect intensity on weaker devices, then recovers when headroom returns. The backing store is DPR-aware (capped at 2×) so the scene stays crisp on HiDPI displays.
+
 ## Files
 
 - `index.html` — the complete application (embedded CSS + JavaScript, Canvas 2D rendering).
 - `README.md` — this file.
+- `VERIFICATION.md` — acceptance status, defects found and fixed, and how the build was verified against rendered pixels.
+- `CANON.md` — canon boundary note.
 
 ## Notes
 
