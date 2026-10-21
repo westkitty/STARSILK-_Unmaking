@@ -19,6 +19,25 @@ This report lists the acceptance checks from the build contract, their status, a
 | 11 | Reset restores original graph, five intact stars, all bodies, zeroed counters | Passed | jsdom: after reset, `total=0`, `intact=5`, `planetsLost=0`, `moonsLost=0`, all nodes `INTACT` |
 | 12 | Usable at mobile portrait and desktop sizes | Implemented/reviewed | Responsive CSS (viewport units, mobile ledger toggle, portrait layout, touch targets) |
 
+### Visual Asset Uplift — executed pass
+
+The following visual asset families were inspected and materially improved (all in `index.html`, procedural Canvas 2D + CSS; no external assets):
+
+| Asset family | Lane | Change |
+|--------------|------|--------|
+| Star cores | REFINE | Layered luminous cores with structural rings, glow depth, and violent inward contraction during surrender (core pulls in before absence emerges) |
+| Starsilk filaments | REFINE | Dimensional barcode ribbons with glow aura, deliberate line rhythm, dark syntax lines, end flares, and tension curvature |
+| Absence nodes | REFINE | Stronger gravitational lensing, event-horizon depth, displaced starlight contour traces |
+| Absence spans (lattice) | REFINE | Light-eating distortion field, warp bulge, displaced-starlight contours, anchor flares |
+| Orbits | REFINE | Distinct per-system dash patterns/directions, trembling under grip, failing spiral orbits during collapse |
+| Tension indicator | REFINE | Fuller threshold track with gradient sweep and threshold marker |
+| Keyboard filament targets | REFINE | Filament-like appearance with inner tip, glow, gripped state |
+| Void background | ENRICH | Subtle distant pinprick starfield with slow drift and twinkle (depth, not a nebula wallpaper) |
+| Typography/ornament | REPAIR | Declared `'Ironfall'` font wasn't loading (fell back to generic system-ui); replaced with authored layered display treatment (letterpress shadow, border ornament) |
+| UI glass/depth | REFINE | Stronger header glass, border, shadow; ledger and control depth |
+
+**23/23 functional acceptance checks re-verified post-uplift** (sim counters, collapse, chain reactions, reconciliation, reset — all unchanged and passing).
+
 ## Not executed in this environment (browser-only)
 
 - Full pointer drag-and-pull gesture through the rendered Canvas (no `CanvasRenderingContext2D` in jsdom)
@@ -29,8 +48,9 @@ This report lists the acceptance checks from the build contract, their status, a
 
 ## Method
 
-The simulation (graph, object inventory, collapse rules, event ledger, counters) was exercised head-first with `jsdom` by dispatching pointer events and driving `Sim.update` with real `dt`. JavaScript syntax was validated with `node --check`, and the file serves cleanly (`HTTP 200`) from a local server. The complete acceptance suite should be re-run in a real desktop and mobile browser before release.
+The simulation (graph, object inventory, collapse rules, event ledger, counters) was exercised head-first with `jsdom` by driving `Sim.update` with real `dt`. JavaScript syntax was validated with `node --check`, and the file serves cleanly (`HTTP 200`) from a local server. The complete acceptance suite should be re-run in a real desktop and mobile browser before release.
 
 ## Inventory reconciliation
 
 Original inventory: 5 systems, 5 stars, 13 planets, 5 moons. After collapsing all five systems: `planetsLost === 13`, `moonsLost === 5`, `total === 5`, `intact === 0`. The ledger reconciles to the original object inventory with each object counted exactly once.
+
