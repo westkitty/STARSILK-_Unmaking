@@ -1,0 +1,36 @@
+{
+  "initial": {
+    "mean": 31.49,
+    "std": 67.53,
+    "brightPct": 18.56
+  },
+  "gripped": {
+    "mean": 34.63,
+    "std": 68.79,
+    "brightPct": 20.7
+  },
+  "collapsing": {
+    "mean": 30.01,
+    "std": 66.54,
+    "brightPct": 17.6
+  },
+  "absence_one": {
+    "mean": 33.6,
+    "std": 69.71,
+    "brightPct": 19.71
+  },
+  "all_absence": {
+    "mean": 10.58,
+    "std": 26.79,
+    "brightPct": 8.61
+  },
+  "after_reset": {
+    "mean": 31.63,
+    "std": 67.71,
+    "brightPct": 18.63
+  },
+  "_identity": {
+    "closestPair": 59.3,
+    "furthestPair": 164.3
+  }
+}

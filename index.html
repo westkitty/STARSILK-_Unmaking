@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Starsilk: The Unmaking Engine</title>
 <meta name="description" content="An interactive cosmic destruction instrument — pull a strand of Starsilk and witness a star surrender.">
-<link rel="preload" as="font" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=Space+Grotesk:wght@300;500;700&display=swap" crossorigin>
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#030306">
+<!-- Inline SVG favicon: keeps the file genuinely self-contained (no extra asset, no 404).
+     Typography deliberately uses a system stack rather than a webfont service so the
+     artifact stays fully offline-capable with zero external requests. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23030306'/%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%2300d4ff' stroke-opacity='.45' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='16' r='5.5' fill='%2300d4ff'/%3E%3C/svg%3E">
 <style>
   /* ========================================================================
      COSMIC SACRILEGE — PREMIUM VISUAL SYSTEM
@@ -39,9 +44,9 @@
     --ok:#7ee8a7;
     --gold:#f2b84b;
     /* Typography */
-    --font-display:'Space Grotesk','Segoe UI',system-ui,sans-serif;
-    --font-mono:'IBM Plex Mono','Menlo',monospace;
-    --font-body:'Inter','Segoe UI',system-ui,sans-serif;
+    --font-display:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+    --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;
+    --font-body:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
     /* Layout */
     --ui-z:50;
     --instr-z:60;
@@ -56,13 +61,15 @@
     color:var(--text);
     font-family:var(--font-body);
     overflow:hidden;
-    touch-action:none;
     -webkit-font-smoothing:antialiased;
   }
   canvas#stage{
     display:block;
     width:100vw;
     height:100vh;
+    /* Allow pinch-zoom (accessibility) while suppressing pan/double-tap so
+       single-finger drag gestures still reach the app. */
+    touch-action:pinch-zoom;
     background:radial-gradient(circle at 50% 38%, #0b0b14 0%, #040408 45%, var(--void-deep) 100%);
   }
 
@@ -390,6 +397,70 @@
   }
 
   /* ========================================================================
+     BOARD SUMMARY — text equivalent of the canvas
+     ======================================================================== */
+  #boardSummary{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0,0,0,0);border:0;white-space:nowrap;
+  }
+  /* Revealed on request so sighted users can read exactly what a screen
+     reader gets — also the quickest way to verify state. */
+  #boardSummary.expanded{
+    position:fixed;left:12px;bottom:12px;width:auto;height:auto;
+    max-width:min(430px,92vw);max-height:44vh;margin:0;clip:auto;overflow:auto;
+    white-space:normal;padding:11px 13px;font-family:var(--font-mono);
+    font-size:11px;line-height:1.55;color:var(--text);
+    background:rgba(2,2,4,0.96);border:1px solid rgba(0,212,255,0.34);
+    border-radius:11px;z-index:64;box-shadow:0 10px 34px rgba(0,0,0,0.7);
+  }
+
+  /* ========================================================================
+     HIGH CONTRAST — raises UI contrast without changing the art direction
+     ======================================================================== */
+  body.hc{
+    --text:#ffffff;
+    --text-dim:#ccd6e8;
+    --azure:#5ce6ff;
+    --danger:#ff8fa3;
+    --ok:#93f7bb;
+    --gold:#ffd06b;
+  }
+  body.hc header#chrome{
+    background:linear-gradient(180deg, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.76) 100%);
+    border-bottom-color:rgba(92,230,255,0.6);
+  }
+  body.hc #ledger{background:rgba(0,0,0,0.97);border-color:rgba(204,214,232,0.55);}
+  body.hc #ledger .event{border-left-color:#5ce6ff;background:rgba(255,255,255,0.07);}
+  body.hc #vignette{
+    background:radial-gradient(circle at 50% 42%, transparent 56%, rgba(0,0,0,0.10) 100%);
+  }
+  body.hc button.controlbtn,
+  body.hc button.resetbtn{border-color:rgba(204,214,232,0.7);color:#fff;}
+  body.hc .kfilament{border-color:#5ce6ff;}
+
+  button.controlbtn:disabled{opacity:.32;cursor:not-allowed;}
+  button.controlbtn:disabled:hover{
+    border-color:rgba(139,148,168,0.22);color:var(--text);
+    background:rgba(255,255,255,0.05);box-shadow:none;
+  }
+  button.controlbtn[aria-pressed="true"]{
+    border-color:var(--azure);color:var(--azure);background:rgba(0,212,255,0.12);
+  }
+
+  /* ========================================================================
+     COMPACT HEADER — the control set grew; let it wrap instead of overflowing
+     ======================================================================== */
+  @media (max-width:640px){
+    header#chrome{height:auto;min-height:54px;padding:7px 10px;flex-wrap:wrap;gap:8px;}
+    #controls{gap:7px;flex-wrap:wrap;justify-content:flex-end;}
+    .togglegroup b{display:none;}
+    .controlbtn{width:32px;height:32px;font-size:13px;}
+    button.resetbtn{padding:6px 11px;font-size:9px;letter-spacing:0.14em;}
+    #title-block .appname{font-size:14px;letter-spacing:0.32em;}
+    #title-block .descriptor{font-size:7.5px;letter-spacing:0.24em;}
+  }
+
+  /* ========================================================================
      ACCESSIBILITY
      ======================================================================== */
   #sr-live{
@@ -421,8 +492,11 @@
       <b>sound</b>
       <button class="mutebtn" id="muteBtn" aria-pressed="false" aria-label="Toggle sound">&#9635;</button>
     </div>
-    <button class="controlbtn" id="autopsyBtn" aria-label="Open aftermath autopsy view">&#128219;</button>
-    <button class="resetbtn" id="resetBtn" aria-label="Reset the universe (requires confirmation)">Reset Universe</button>
+    <button class="controlbtn" id="contrastBtn" aria-pressed="false" aria-label="Toggle high contrast mode" title="High contrast (C)">&#9686;</button>
+    <button class="controlbtn" id="undoBtn" aria-label="Restore the last collapsed system" title="Undo last (U)" disabled>&#8630;</button>
+    <button class="controlbtn" id="exportBtn" aria-label="Export the lattice as a PNG image" title="Export image (E)">&#8681;</button>
+    <button class="controlbtn" id="autopsyBtn" aria-label="Open aftermath autopsy view" title="Autopsy (A)">&#128219;</button>
+    <button class="resetbtn" id="resetBtn" aria-label="Reset the universe (requires confirmation)" title="Reset (R)">Reset Universe</button>
   </div>
 </header>
 
@@ -430,6 +504,13 @@
   Find the filament
   <small>Grip and pull to unmake.</small>
 </div>
+
+<!-- Text equivalent of the canvas: without this the entire game state is
+     invisible to screen-reader and other non-visual users. -->
+<div id="boardSummary" role="status" aria-live="polite" aria-atomic="true"></div>
+<!-- Polite live region for interaction announcements. The JS looked this up
+     but the element was never in the markup, so every announce() threw. -->
+<div id="sr-live" aria-live="polite" aria-atomic="true"></div>
 
 <div id="ledger" aria-label="Destruction ledger">
   <div class="ledger-head" role="button" tabindex="0" id="ledgerHead" aria-describedby="ledgerBody" aria-expanded="true">
@@ -488,7 +569,8 @@
   // ------------------------------------------------------------------ Config
   const CFG = {
     pullThreshold: 150,
-    snapBackTime: 0.55,
+    filamentHitRadius: 28,     // widened further on coarse pointers (see COARSE_POINTER)
+    snapBackTime: 0.55,        // filament recoil after a cancelled pull
     collapseTime: 0.9,
     chainDelayMin: 0.7,
     chainDelayMax: 1.9,
@@ -600,15 +682,15 @@
   const Particles = (function(){
     const pool = [];
     let activeCount = 0;
-    for(let i=0;i<CFG.particleMax;i++) pool.push({x:0,y:0,vx:0,vy:0,life:0,maxLife:0,size:0,color:'#00d4ff',alpha:1,type:'glimmer',active:false});
-    function spawn(x,y,vx,vy,life,size,color,type='glimmer'){
+    for(let i=0;i<CFG.particleMax;i++) pool.push({x:0,y:0,vx:0,vy:0,life:0,maxLife:0,size:0,color:'#00d4ff',alpha:1,active:false});
+    function spawn(x,y,vx,vy,life,size,color){
       let p = pool.find(pp=>!pp.active);
       if(!p){
         // reuse oldest (simple LRU-ish)
         p = pool[0];
         for(let i=1;i<pool.length;i++) if(pool[i].life < p.life) p = pool[i];
       }
-      p.x=x;p.y=y;p.vx=vx;p.vy=vy;p.life=life;p.maxLife=life;p.size=size;p.color=color;p.type=type;p.alpha=1;p.active=true;
+      p.x=x;p.y=y;p.vx=vx;p.vy=vy;p.life=life;p.maxLife=life;p.size=size;p.color=color;p.alpha=1;p.active=true;
       activeCount++;
       return p;
     }
@@ -628,25 +710,24 @@
         if(p.life<=0) p.active=false;
       });
     }
-    function draw(ctx,t){
-      pool.forEach(p=>{
-        if(!p.active) return;
-        ctx.save();
-        ctx.globalAlpha = p.alpha;
+    // Single composite/state setup for the whole pool (no per-particle
+    // save/restore), and an additive halo so debris reads as luminous matter.
+    function draw(ctx){
+      if(activeCount <= 0) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for(let i=0;i<pool.length;i++){
+        const p = pool[i];
+        if(!p.active) continue;
+        const r = Math.max(0.5, p.size);
+        const a = clamp(p.alpha, 0, 1);
+        ctx.globalAlpha = a * 0.45;
+        ctx.drawImage(GLOW_WHITE, p.x - r*3.2, p.y - r*3.2, r*6.4, r*6.4);
+        ctx.globalAlpha = a;
         ctx.fillStyle = p.color;
-        if(p.type==='debris'){
-          ctx.fillStyle = p.color;
-          ctx.beginPath();
-          ctx.arc(p.x,p.y, Math.max(0.5,p.size), 0, Math.PI*2);
-          ctx.fill();
-        } else if(p.type==='spark'){
-          ctx.fillStyle = p.color;
-          ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x+p.vx*0.15, p.y+p.vy*0.15); ctx.stroke();
-        } else {
-          ctx.beginPath(); ctx.arc(p.x,p.y, Math.max(0.4,p.size*0.6), 0, Math.PI*2); ctx.fill();
-        }
-        ctx.restore();
-      });
+        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
     }
     return {spawn, update, draw, get activeCount(){ return activeCount; }};
   })();
@@ -694,16 +775,44 @@
     };
   })();
 
+  // ------------------------------------------------------------------ Hit-stop (weight on impact)
+  // Briefly slows the simulation clock at the moment of surrender so the
+  // aftermath lands with weight. Skipped under reduced-motion, since altering
+  // perceived time is exactly what that preference asks us not to do.
+  const HitStop = (function(){
+    let t = 0, dur = 0.001, depth = 0;
+    return {
+      fire(duration = 0.10, amount = 0.16){
+        if(Motion.reduced) return;
+        t = duration; dur = duration; depth = amount;
+      },
+      get scale(){
+        if(t <= 0) return 1;
+        const k = t / dur;
+        return 1 - (1 - depth) * k * k;   // slow at impact, eased back to normal
+      },
+      update(dt){ if(t > 0) t = Math.max(0, t - dt); },
+      clear(){ t = 0; }
+    };
+  })();
+
   // ------------------------------------------------------------------ Simulation
   function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+  // Overshoots 1.0 slightly before settling — the classic "back" ease, used for
+  // the filament recoil so the strand has follow-through.
+  function easeOutBack(k){
+    const c1 = 1.70158, c3 = c1 + 1;
+    const p = k - 1;
+    return 1 + c3 * p * p * p + c1 * p * p;
+  }
   function dist(a,b){const dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);}
 
   const RAW_SYSTEMS = [
-    {id:'sys1',name:'SYSTEM I',cx:0.18,cy:0.30,hue:200,planets:[{r:56,speed:0.0006,size:5,color:'#9fb3d8'},{r:92,speed:0.00045,size:7,color:'#cfe3ff'}] ,moon:{planetIdx:0,r:17,size:3,color:'#b8c4d8'}},
-    {id:'sys2',name:'SYSTEM II',cx:0.82,cy:0.28,hue:235,planets:[{r:48,speed:0.0007,size:6,color:'#b3d4fc'},{r:78,speed:0.00052,size:5,color:'#a8c8f0'},{r:112,speed:0.00038,size:8,color:'#dbe7ff'}],moon:{planetIdx:2,r:22,size:4,color:'#c6dcfd'}},
-    {id:'sys3',name:'SYSTEM III',cx:0.50,cy:0.52,hue:190,planets:[{r:62,speed:0.00058,size:6,color:'#a9d2f2'},{r:104,speed:0.00044,size:7,color:'#bde0fe'}] ,moon:{planetIdx:1,r:19,size:3,color:'#cfe9ff'}},
-    {id:'sys4',name:'SYSTEM IV',cx:0.22,cy:0.72,hue:210,planets:[{r:44,speed:0.00066,size:5,color:'#c1dffd'},{r:72,speed:0.00049,size:6,color:'#a9cbf2'},{r:100,speed:0.00036,size:7,color:'#ccdafd'},{r:134,speed:0.00030,size:8,color:'#e2f0ff'}],moon:{planetIdx:3,r:26,size:4,color:'#d4e6fd'}},
-    {id:'sys5',name:'SYSTEM V',cx:0.78,cy:0.70,hue:185,planets:[{r:52,speed:0.00061,size:6,color:'#a9d6f5'},{r:90,speed:0.00047,size:7,color:'#bfe0fe'}],moon:{planetIdx:0,r:20,size:3,color:'#cbeaff'}},
+    {id:'sys1',name:'SYSTEM I',cx:0.18,cy:0.30,hue:190,sat:92,planets:[{r:56,speed:0.0006,size:5,color:'#9fb3d8'},{r:92,speed:0.00045,size:7,color:'#cfe3ff'}] ,moon:{planetIdx:0,r:17,size:3,color:'#b8c4d8'}},
+    {id:'sys2',name:'SYSTEM II',cx:0.82,cy:0.28,hue:258,sat:60,planets:[{r:48,speed:0.0007,size:6,color:'#b3d4fc'},{r:78,speed:0.00052,size:5,color:'#a8c8f0'},{r:112,speed:0.00038,size:8,color:'#dbe7ff'}],moon:{planetIdx:2,r:22,size:4,color:'#c6dcfd'}},
+    {id:'sys3',name:'SYSTEM III',cx:0.50,cy:0.52,hue:152,sat:80,planets:[{r:62,speed:0.00058,size:6,color:'#a9d2f2'},{r:104,speed:0.00044,size:7,color:'#bde0fe'}] ,moon:{planetIdx:1,r:19,size:3,color:'#cfe9ff'}},
+    {id:'sys4',name:'SYSTEM IV',cx:0.22,cy:0.72,hue:214,sat:88,planets:[{r:44,speed:0.00066,size:5,color:'#c1dffd'},{r:72,speed:0.00049,size:6,color:'#a9cbf2'},{r:100,speed:0.00036,size:7,color:'#ccdafd'},{r:134,speed:0.00030,size:8,color:'#e2f0ff'}],moon:{planetIdx:3,r:26,size:4,color:'#d4e6fd'}},
+    {id:'sys5',name:'SYSTEM V',cx:0.78,cy:0.70,hue:292,sat:68,planets:[{r:52,speed:0.00061,size:6,color:'#a9d6f5'},{r:90,speed:0.00047,size:7,color:'#bfe0fe'}],moon:{planetIdx:0,r:20,size:3,color:'#cbeaff'}},
   ];
 
   const EDGES = [
@@ -743,6 +852,7 @@
           id: s.id, name: s.name, cx: s.cx, cy: s.cy,
           x: s.cx * W, y: s.cy * H,
           hue: s.hue,
+          sat: s.sat || 85,
           state: 'INTACT',
           stress: 0,
           collapseCause: null,
@@ -751,16 +861,23 @@
           gripProgress: 0,
           pulledBack: null,
           angleOffset: 0,
+          snapT: 0, snapFrom: 0, snapAngleFrom: 0,   // recoil animation state
           collapseT: 0,
           absenceRadius: 0
         });
       });
       this.edges = EDGES.map(e=>({a:e[0],b:e[1],state:'intact'}));
       this.events = [];
+      // Pending chain reactions are held here and advanced by update(dt) rather
+      // than by setTimeout, so reset() cancels them and the sim stays deterministic.
+      this.pendingChains = [];
+      this.undoStack = [];
       this.directExtractions = 0;
       this.chainCollapses = 0;
       this.chainReactionCount = 0;
       this.time = 0;
+      this.timeScale = 1;
+      HitStop.clear();
       this.log('system','The lattice stands intact. Five stars hold their silk.', []);
     },
 
@@ -789,10 +906,13 @@
 
     hitTest(px, py){
       let best = null, bestD = 1e9;
+      // Widen the grab bands on touch. A filament is a thin strand with no
+      // visual thickness to aim at, so it needs a generous perpendicular band.
+      const HIT_BAND   = CFG.filamentHitRadius * (COARSE_POINTER ? 1.35 : 1);
+      const starRadius = CFG.starBaseRadius + (COARSE_POINTER ? 24 : 14);
       this.nodes.forEach(n=>{
         if(n.state === 'ABSENCE') return;
         const dStar = dist({x:px,y:py}, n);
-        const starRadius = CFG.starBaseRadius + 14;
         if(dStar < starRadius && dStar < bestD){ bestD = dStar; best = {node:n, kind:'star', d:dStar}; }
         this.edges.forEach(e=>{
           let other = null;
@@ -800,7 +920,7 @@
           else if(e.b === n.id) other = this.nodes.get(e.a);
           if(!other || other.state === 'ABSENCE' || n.state === 'ABSENCE') return;
           const d = pointSegDist(px, py, n.x, n.y, other.x, other.y);
-          if(d < 20 && d < bestD){ bestD = d; best = {node:n, kind:'filament', d, edge:e, other}; }
+          if(d < HIT_BAND && d < bestD){ bestD = d; best = {node:n, kind:'filament', d, edge:e, other}; }
         });
       });
       return best;
@@ -809,6 +929,17 @@
     commitCollapse(nodeId, cause, sourceId){
       const n = this.nodes.get(nodeId);
       if(n.state === 'ABSENCE') return false;
+      // Snapshot for undo, taken before any mutation.
+      const snap = {
+        id: nodeId, cause, source: sourceId,
+        prevState: n.state, prevCause: n.collapseCause, prevSource: n.collapseSource,
+        prevT: n.collapseT, prevRadius: n.absenceRadius, prevStress: n.stress,
+        planets: n.planets.map(p=>p.alive),
+        moon: n.moon ? n.moon.alive : null,
+        events: this.events.length,
+        stressed: []
+      };
+      this.undoStack.push(snap);
       n.state = 'COLLAPSING';
       n.collapseCause = cause;
       n.collapseSource = sourceId;
@@ -818,13 +949,15 @@
 
       // Implosion herald — stray matter dragged inward as the star gives way.
       // Velocity points back at the core, so the debris falls in rather than out.
-      for(let i=0;i<18;i++){
+      // Count scales with device quality so weak hardware gets a lighter burst.
+      const implodeN = Math.max(6, Math.round(18 * Quality.fxScale));
+      for(let i=0;i<implodeN;i++){
         const a = Math.random()*Math.PI*2;
         const rad = CFG.starBaseRadius * (2.2 + Math.random()*2.6);
         const spd = 60 + Math.random()*120;
         Particles.spawn(n.x + Math.cos(a)*rad, n.y + Math.sin(a)*rad,
                         -Math.cos(a)*spd, -Math.sin(a)*spd,
-                        0.45 + Math.random()*0.5, 1.2 + Math.random()*1.8, '#cfe9ff', 'debris');
+                        0.45 + Math.random()*0.5, 1.2 + Math.random()*1.8, '#cfe9ff');
       }
       Screen.shake(0.6);
 
@@ -835,15 +968,18 @@
         {system: n.id, cause, source: sourceId, planets, moons});
 
       this.edges.forEach(e=>{
+        // Only edges this system actually belongs to. Without this guard an
+        // unrelated edge fell through to `e.a`, so collapsing one star stressed
+        // systems it was never connected to and chains fired far too readily.
+        if(e.a !== nodeId && e.b !== nodeId) return;
         const otherId = e.a === nodeId ? e.b : e.a;
         const other = this.nodes.get(otherId);
         if(other && other.state === 'INTACT'){
           other.stress += CFG.stressPerCollapse;
+          snap.stressed.push(otherId);
           if(other.stress >= CFG.chainStressThreshold){
             const delay = CFG.chainDelayMin + Math.random() * (CFG.chainDelayMax - CFG.chainDelayMin);
-            setTimeout(()=>{
-              if(other.state === 'INTACT') this.commitCollapse(otherId, 'chain', nodeId);
-            }, delay * 1000);
+            this.pendingChains.push({ id: otherId, source: nodeId, t: delay });
           }
         }
       });
@@ -863,46 +999,140 @@
       Screen.pulseVignette();
       // The moment of surrender: a hard additive flash...
       Flash.fire(n.x, n.y, CFG.starBaseRadius * 1.4);
+      HitStop.fire();
       // ...followed by debris flung clear of the new absence.
-      for(let i=0;i<22;i++){
+      const debrisN = Math.max(8, Math.round(22 * Quality.fxScale));
+      for(let i=0;i<debrisN;i++){
         const a = Math.random()*Math.PI*2;
         const spd = 40 + Math.random()*190;
         const hot = i % 3 === 0;
         Particles.spawn(n.x, n.y, Math.cos(a)*spd, Math.sin(a)*spd,
           0.5 + Math.random()*0.9, 1.5 + Math.random()*2.5,
-          hot ? '#eaf6ff' : '#00d4ff', 'debris');
+          hot ? '#eaf6ff' : '#00d4ff');
       }
     },
 
     update(dt){
-      this.time += dt;
+      // timeScale lets the presentation layer slow time briefly (hit-stop) without
+      // altering any collapse rule; the simulation clock stays authoritative.
+      const sdt = dt * this.timeScale * HitStop.scale;
+      this.time += sdt;
+      HitStop.update(dt);
+
+      // advance pending chain reactions on the simulation clock
+      if(this.pendingChains.length){
+        const due = [];
+        this.pendingChains = this.pendingChains.filter(pc=>{
+          pc.t -= sdt;
+          if(pc.t <= 0){ due.push(pc); return false; }
+          return true;
+        });
+        due.forEach(pc=>{
+          const target = this.nodes.get(pc.id);
+          if(target && target.state === 'INTACT') this.commitCollapse(pc.id, 'chain', pc.source);
+        });
+      }
+
       this.nodes.forEach(n=>{
         if(n.state === 'INTACT' || n.state === 'GRIPPED'){
           n.planets.forEach(p=>{
-            if(p.alive) p.angle += p.speed * dt * 60;
+            if(p.alive) p.angle += p.speed * sdt * 60;
           });
         }
         if(n.moon && n.moon.alive){
           const p = n.planets.find(pp=>pp.id === n.moon.planet);
-          if(p && p.alive) n.moon.angle += n.moon.speed * dt * 60;
+          if(p && p.alive) n.moon.angle += n.moon.speed * sdt * 60;
         }
         if(n.state === 'COLLAPSING'){
-          n.collapseT = clamp(n.collapseT + dt / CFG.collapseTime, 0, 1);
+          n.collapseT = clamp(n.collapseT + sdt / CFG.collapseTime, 0, 1);
           n.absenceRadius = CFG.starBaseRadius * (0.5 + 1.6 * n.collapseT);
           if(n.collapseT >= 1) this.completeCollapse(n.id);
         }
         if(n.state === 'ABSENCE'){
-          n.absenceRadius = Math.min(n.absenceRadius + dt * 6, CFG.starBaseRadius * 3.2);
+          n.absenceRadius = Math.min(n.absenceRadius + sdt * 6, CFG.starBaseRadius * 3.2);
         }
-        if(n.state === 'GRIPPED'){
+        if(n.snapT > 0){
+          // Recoil: ease the strand home with a little follow-through so it
+          // reads as silk under tension rather than a snapping rubber band.
+          n.snapT = Math.max(0, n.snapT - sdt / CFG.snapBackTime);
+          const k = 1 - n.snapT;
+          const eased = Motion.reduced
+            ? 1 - Math.pow(1 - k, 3)          // plain ease-out: no overshoot
+            : easeOutBack(k);                 // overshoot slightly, then settle
+          n.gripProgress = n.snapFrom * (1 - eased);
+          n.angleOffset  = n.snapAngleFrom * (1 - eased);
+          if(n.snapT === 0){ n.gripProgress = 0; n.angleOffset = 0; }
+        } else if(n.state === 'GRIPPED'){
           n.angleOffset = Math.sin(this.time * 0.012) * 1.5;
         } else if(n.state !== 'COLLAPSING'){
           n.angleOffset = 0;
         }
       });
-      Particles.update(dt);
+      Particles.update(sdt);
       Screen.update(dt);
       Flash.update(dt);
+    },
+
+    // Restore the most recent collapse. Counters are derived from node state in
+    // counters(), so restoring state + alive flags is sufficient to reconcile
+    // every number except chainReactionCount, which is tracked separately.
+    undoLastCollapse(){
+      const s = this.undoStack.pop();
+      if(!s) return false;
+      const n = this.nodes.get(s.id);
+      if(!n) return false;
+      // revert stress applied to neighbours by this collapse
+      s.stressed.forEach(id=>{
+        const o = this.nodes.get(id);
+        if(o) o.stress = Math.max(0, o.stress - CFG.stressPerCollapse);
+      });
+      // drop chain reactions this collapse scheduled but that have not fired
+      const before = this.pendingChains.length;
+      this.pendingChains = this.pendingChains.filter(pc => pc.source !== s.id);
+      // if one already fired it is on the stack too and will be undone next
+      void before;
+      n.state = s.prevState;
+      n.collapseCause = s.prevCause;
+      n.collapseSource = s.prevSource;
+      n.collapseT = s.prevT;
+      n.absenceRadius = s.prevRadius;
+      n.stress = s.prevStress;
+      n.gripProgress = 0;
+      n.angleOffset = 0;
+      n.planets.forEach((p,i)=>{ p.alive = s.planets[i]; });
+      if(n.moon && s.moon !== null) n.moon.alive = s.moon;
+      // trim the event log back to where it was before the collapse
+      if(this.events.length > s.events) this.events.length = s.events;
+      if(s.cause === 'chain') this.chainReactionCount = Math.max(0, this.chainReactionCount - 1);
+      return true;
+    },
+
+    canUndo(){ return this.undoStack.length > 0; },
+
+    // Mark a system absent without playing VFX — used when restoring a saved
+    // session, so reloading doesn't detonate every collapse again.
+    restoreAbsent(nodeId, cause, sourceId){
+      const n = this.nodes.get(nodeId);
+      if(!n || n.state === 'ABSENCE') return false;
+      this.undoStack.push({
+        id: nodeId, cause: cause || 'direct', source: sourceId || null,
+        prevState: n.state, prevCause: n.collapseCause, prevSource: n.collapseSource,
+        prevT: n.collapseT, prevRadius: n.absenceRadius, prevStress: n.stress,
+        planets: n.planets.map(p=>p.alive),
+        moon: n.moon ? n.moon.alive : null,
+        events: this.events.length,
+        stressed: []
+      });
+      n.state = 'ABSENCE';
+      n.collapseT = 1;
+      n.absenceRadius = CFG.starBaseRadius * 1.6;
+      n.collapseCause = cause || 'direct';
+      n.collapseSource = sourceId || null;
+      n.planets.forEach(p=>{ p.alive = false; });
+      if(n.moon) n.moon.alive = false;
+      if(n.collapseCause === 'chain') this.chainReactionCount++;
+      this.log('aftermath', `${n.name} is now an absence node.`, {system: n.id});
+      return true;
     },
 
     reset(){
@@ -915,6 +1145,9 @@
   // ------------------------------------------------------------------ Motion preference (JS-side, complements the CSS media query)
   const motionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   const Motion = { get reduced(){ return !!(motionQuery && motionQuery.matches); } };
+
+  // Coarse pointers (fingers) need a wider grab band than a mouse cursor.
+  const COARSE_POINTER = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
   // ------------------------------------------------------------------ Adaptive quality (performance-first, auto-degrades on weak devices)
   const Quality = (function(){
@@ -941,12 +1174,22 @@
   const canvas = document.getElementById('stage');
   const ctx = canvas.getContext('2d', {alpha:false});
   let W = 1, H = 1, DPR = 1, sceneScale = 1;
+  // Pre-rendered orbit rings, keyed by system. Declared here because resize()
+  // clears it, and resize() runs during initialisation (before the render code
+  // further down is even defined).
+  const orbitSprites = new Map();
+  // Cached absence-lens sprites, keyed by span length. The tapered lens and
+  // its gradient are static, so rasterising those curved paths once per
+  // distinct length turns two path fills per span per frame into one blit.
+  const spanSprites = new Map();
   function resize(){
     DPR = Math.min(window.devicePixelRatio || 1, Quality.dprCap);
     W = Math.max(1, window.innerWidth); H = Math.max(1, window.innerHeight);
     // Glow radii are absolute pixels. On a small viewport they would swallow
     // the whole screen, so scale them down to keep the composition readable.
     sceneScale = clamp(Math.min(W, H) / 800, 0.6, 1);
+    orbitSprites.clear();               // rebuild at the new device resolution
+    spanSprites.clear();                // ditto: lens bitmaps are DPR-dependent
     canvas.width  = Math.round(W * DPR);
     canvas.height = Math.round(H * DPR);
     canvas.style.width  = W + 'px';
@@ -993,7 +1236,22 @@
   // The canvas is opaque ({alpha:false}), so the CSS background gradient never
   // showed. Depth is now genuinely rendered, at 1/6 resolution for near-zero cost.
   let nebulaCanvas = null;
+  // Deterministic PRNG (mulberry32). The background is seeded so it is
+  // reproducible: buildNebula() re-runs on every resize, and without a fixed
+  // seed the entire backdrop would visibly reshuffle whenever the window
+  // changed size. A stable seed also keeps the field identical every session.
+  function mulberry32(a){
+    return function(){
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const BG_SEED = 0x5EA5ED;
+
   function buildNebula(){
+    const rnd = mulberry32(BG_SEED);
     const nw = Math.max(2, Math.round(W / 6)), nh = Math.max(2, Math.round(H / 6));
     const c = document.createElement('canvas');
     c.width = nw; c.height = nh;
@@ -1007,10 +1265,10 @@
     g.globalCompositeOperation = 'lighter';
     const tints = [[20,48,104],[10,66,120],[54,22,92],[8,58,80],[26,36,110]];
     for(let i=0;i<11;i++){
-      const cx = Math.random()*nw, cy = Math.random()*nh;
-      const rr = (0.10 + Math.random()*0.28) * Math.max(nw,nh);
+      const cx = rnd()*nw, cy = rnd()*nh;
+      const rr = (0.10 + rnd()*0.28) * Math.max(nw,nh);
       const tint = tints[i % tints.length];
-      const a = 0.045 + Math.random()*0.085;
+      const a = 0.045 + rnd()*0.085;
       const rg = g.createRadialGradient(cx, cy, 0, cx, cy, rr);
       rg.addColorStop(0.0, `rgba(${tint[0]},${tint[1]},${tint[2]},${a})`);
       rg.addColorStop(0.5, `rgba(${tint[0]},${tint[1]},${tint[2]},${a*0.42})`);
@@ -1034,22 +1292,23 @@
     {count: 140, magRange:[0.1,0.3],   speedRange:[0.00022,0.00045], color:'rgba(220,232,255,0.34)', alphaMult:0.34},
   ];
   const starfield = [];
+  { const rnd = mulberry32(BG_SEED ^ 0x1F3A7C);
   STARFIELD_LAYERS.forEach((layer, li)=>{
     for(let i=0;i<layer.count;i++){
       starfield.push({
         layer: li,
-        x: Math.random(), y: Math.random(),
-        mag: layer.magRange[0] + Math.random()*(layer.magRange[1]-layer.magRange[0]),
-        twinkle: Math.random()*Math.PI*2,
-        speed: layer.speedRange[0] + Math.random()*(layer.speedRange[1]-layer.speedRange[0]),
+        x: rnd(), y: rnd(),
+        mag: layer.magRange[0] + rnd()*(layer.magRange[1]-layer.magRange[0]),
+        twinkle: rnd()*Math.PI*2,
+        speed: layer.speedRange[0] + rnd()*(layer.speedRange[1]-layer.speedRange[0]),
         color: layer.color,
         alphaMult: layer.alphaMult,
-        driftX: (Math.random()*2-1)*0.3,
-        driftY: (Math.random()*2-1)*0.3,
-        rank: Math.random(),   // stable ordering so quality drops thin the field evenly
+        driftX: (rnd()*2-1)*0.3,
+        driftY: (rnd()*2-1)*0.3,
+        rank: rnd(),   // stable ordering so quality drops thin the field evenly
       });
     }
-  });
+  }); }
 
   function drawStarfield(t){
     const scale = Quality.starScale;
@@ -1070,14 +1329,20 @@
       const alpha = s.alphaMult * (Motion.reduced ? 0.85 : tw);
       if(alpha <= 0.01) continue;
       const rad = s.mag * 0.55 + 0.35;
-      // soft halo from the cached sprite + a crisp core: reads as a real star
-      bloom(GLOW_WHITE, px, py, rad * 3.4, alpha * 0.15);
+      // Soft halo from the cached sprite + a crisp core: reads as a real star.
+      // Blitted inline (the composite state is set once outside the loop)
+      // rather than via bloom(), which would save/restore per star.
+      const gr = rad * 3.4;
+      ctx.globalAlpha = alpha * 0.15;
+      ctx.drawImage(GLOW_WHITE, px - gr, py - gr, gr * 2, gr * 2);
       ctx.globalAlpha = Math.min(1, alpha);
       ctx.fillStyle = s.color;
       ctx.beginPath(); ctx.arc(px, py, rad, 0, Math.PI*2); ctx.fill();
       // rare distant-sun glint
       if(s.layer === 0 && Math.sin(t*0.0007 + s.twinkle*3) > 0.96){
-        bloom(GLOW_WHITE, px, py, rad * 9, 0.16);
+        const kr = rad * 9;
+        ctx.globalAlpha = 0.16;
+        ctx.drawImage(GLOW_WHITE, px - kr, py - kr, kr * 2, kr * 2);
       }
     }
     ctx.restore();
@@ -1091,22 +1356,6 @@
     t = clamp(t, 0, 1);
     const closestX = x1 + t * dx, closestY = y1 + t * dy;
     return Math.hypot(px - closestX, py - closestY);
-  }
-
-  function gradStar(x, y, r, hue, alive){
-    const g = ctx.createRadialGradient(x, y, r * 0.1, x, y, r * 1.2);
-    if(alive){
-      g.addColorStop(0, '#ffffff');
-      g.addColorStop(0.22, `hsla(${hue}, 72%, 58%, 0.92)`);
-      g.addColorStop(0.5, `hsla(${hue}, 65%, 35%, 0.62)`);
-      g.addColorStop(0.8, `hsla(${hue}, 55%, 18%, 0.3)`);
-      g.addColorStop(1, `hsla(${hue}, 50%, 8%, 0)`);
-    } else {
-      g.addColorStop(0, '#1a1a24');
-      g.addColorStop(0.5, '#0b0b10');
-      g.addColorStop(1, '#020204');
-    }
-    return g;
   }
 
   // ------------------------------------------------------------------ Star core (premium layered)
@@ -1132,10 +1381,10 @@
     if(alive){
       const coronaR = cr * 2.05;
       const cg = ctx.createRadialGradient(0, 0, cr * 0.5, 0, 0, coronaR);
-      cg.addColorStop(0.00, `hsla(${n.hue}, 88%, 72%, ${0.70 * contract})`);
-      cg.addColorStop(0.34, `hsla(${n.hue}, 80%, 55%, ${0.30 * contract})`);
-      cg.addColorStop(0.70, `hsla(${n.hue}, 70%, 40%, ${0.10 * contract})`);
-      cg.addColorStop(1.00, `hsla(${n.hue}, 60%, 30%, 0)`);
+      cg.addColorStop(0.00, `hsla(${n.hue}, ${n.sat}%, 72%, ${0.70 * contract})`);
+      cg.addColorStop(0.34, `hsla(${n.hue}, ${n.sat - 8}%, 55%, ${0.30 * contract})`);
+      cg.addColorStop(0.70, `hsla(${n.hue}, ${n.sat - 18}%, 40%, ${0.10 * contract})`);
+      cg.addColorStop(1.00, `hsla(${n.hue}, ${n.sat - 28}%, 30%, 0)`);
       ctx.fillStyle = cg;
       ctx.beginPath(); ctx.arc(0, 0, coronaR, 0, Math.PI*2); ctx.fill();
     }
@@ -1144,10 +1393,10 @@
     if(alive){
       const pg = ctx.createRadialGradient(-cr*0.16, -cr*0.16, cr*0.05, 0, 0, cr);
       pg.addColorStop(0.00, '#ffffff');
-      pg.addColorStop(0.30, `hsl(${n.hue}, 96%, 84%)`);
-      pg.addColorStop(0.62, `hsl(${n.hue}, 84%, 62%)`);
-      pg.addColorStop(0.88, `hsl(${n.hue}, 72%, 42%)`);
-      pg.addColorStop(1.00, `hsl(${n.hue}, 62%, 26%)`);
+      pg.addColorStop(0.30, `hsl(${n.hue}, ${Math.min(100, n.sat + 8)}%, 84%)`);
+      pg.addColorStop(0.62, `hsl(${n.hue}, ${n.sat - 4}%, 62%)`);
+      pg.addColorStop(0.88, `hsl(${n.hue}, ${n.sat - 16}%, 42%)`);
+      pg.addColorStop(1.00, `hsl(${n.hue}, ${n.sat - 26}%, 26%)`);
       ctx.fillStyle = pg;
       ctx.beginPath(); ctx.arc(0, 0, cr, 0, Math.PI*2); ctx.fill();
     }
@@ -1157,7 +1406,7 @@
       ctx.save();
       ctx.beginPath(); ctx.arc(0, 0, cr, 0, Math.PI*2); ctx.clip();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = `hsla(${n.hue}, 90%, 72%, 0.09)`;
+      ctx.fillStyle = `hsla(${n.hue}, ${Math.min(100, n.sat + 2)}%, 72%, 0.09)`;
       for(let k=0;k<5;k++){
         const a  = (k/5)*Math.PI*2 + t*0.0009 + ph;
         const rr = cr * (0.28 + 0.40 * ((k*0.37) % 1));
@@ -1174,7 +1423,7 @@
       const lr = cr * (0.95 - i * 0.17);
       if(lr <= 0) continue;
       const alpha = (0.45 - i*0.09) * contract;
-      ctx.strokeStyle = `hsla(${n.hue}, 70%, ${60 - i*10}%, ${alpha})`;
+      ctx.strokeStyle = `hsla(${n.hue}, ${n.sat - 18}%, ${60 - i*10}%, ${alpha})`;
       ctx.lineWidth = (2.2 - i*0.5) * contract;
       ctx.setLineDash(i % 2 === 0 ? [7, 9] : [3, 6]);
       ctx.lineDashOffset = -t * 12 + (i * 13);
@@ -1186,9 +1435,9 @@
     if(alive && contract > 0.3){
       const causticR = cr * 0.92;
       const g2 = ctx.createRadialGradient(0, 0, causticR*0.7, 0, 0, causticR*1.05);
-      g2.addColorStop(0.0, `hsla(${n.hue}, 70%, 50%, 0)`);
-      g2.addColorStop(0.5, `hsla(${n.hue}, 70%, 62%, 0.38)`);
-      g2.addColorStop(1.0, `hsla(${n.hue}, 70%, 50%, 0)`);
+      g2.addColorStop(0.0, `hsla(${n.hue}, ${n.sat - 18}%, 50%, 0)`);
+      g2.addColorStop(0.5, `hsla(${n.hue}, ${n.sat - 18}%, 62%, 0.38)`);
+      g2.addColorStop(1.0, `hsla(${n.hue}, ${n.sat - 18}%, 50%, 0)`);
       ctx.fillStyle = g2;
       ctx.beginPath(); ctx.arc(0, 0, causticR*1.05, 0, Math.PI*2); ctx.fill();
     }
@@ -1297,6 +1546,36 @@
     sys5:{dash:[12,8],  dir:1,  phase:2.8, rings:2},
   };
 
+  // (orbitSprites is declared earlier, next to the canvas setup, because
+  //  resize() clears it and resize() runs during initialisation.)
+  function buildOrbitSprite(n){
+    const style = ORBIT_STYLE[n.id] || ORBIT_STYLE.sys1;
+    let maxR = 0;
+    n.planets.forEach(p=>{ if(p.r > maxR) maxR = p.r; });
+    if(maxR <= 0) return null;
+    const pad = 3;
+    const span = maxR + pad;
+    const res = Math.min(DPR, 2);                 // crisp without bloating memory
+    const c = document.createElement('canvas');
+    c.width = c.height = Math.ceil(span * 2 * res);
+    const g = c.getContext('2d');
+    g.setTransform(res, 0, 0, res, 0, 0);
+    g.translate(span, span);
+    for(let ring=0; ring<style.rings; ring++){
+      const ringR = style.rings > 1 ? (ring + 1) * 0.34 : 1;
+      n.planets.forEach((p, idx)=>{
+        const alpha = 0.14 * (ring === 0 ? 1 : 0.55);
+        g.strokeStyle = `rgba(139,148,168,${alpha})`;
+        g.lineWidth = ring === 0 ? 1.1 : 0.6;
+        g.setLineDash(style.dash);
+        g.lineDashOffset = (idx * 6) + (ring * 9);
+        g.beginPath(); g.arc(0, 0, p.r * ringR, 0, Math.PI*2); g.stroke();
+        g.setLineDash([]);
+      });
+    }
+    return { canvas: c, size: span * 2 };
+  }
+
   function drawOrbits(n, t){
     if(n.state === 'ABSENCE') return;
     const style = ORBIT_STYLE[n.id] || ORBIT_STYLE.sys1;
@@ -1305,28 +1584,30 @@
     const tremble = grip ? Math.sin(t * 0.018 + style.phase) * 1.4 : 0;
     const coll = n.state === 'COLLAPSING' ? n.collapseT : 0;
 
-    // concentric architectural rings
-    for(let ring=0; ring<style.rings; ring++){
-      const ringR = style.rings > 1 ? (ring + 1) * 0.34 : 1;
-      n.planets.forEach((p, idx)=>{
-        if(!p.alive) return;
-        const baseR = p.r * ringR;
-        const orbitR = baseR + tremble;
-        const alpha = 0.14 * (1 - coll * 0.75) * (ring === 0 ? 1 : 0.55);
-        ctx.strokeStyle = `rgba(139,148,168,${alpha})`;
-        ctx.lineWidth = ring === 0 ? 1.1 : 0.6;
-        ctx.setLineDash(style.dash);
-        ctx.lineDashOffset = -t * 16 * style.dir + (idx * 6) + (ring * 9);
-        ctx.beginPath(); ctx.arc(0, 0, orbitR, 0, Math.PI*2); ctx.stroke();
-        ctx.setLineDash([]);
-        // nodal marker — tiny tick at planet position
-        const pa = p.angle + (style.dir * coll * 1.4);
-        const mx = Math.cos(pa) * orbitR;
-        const my = Math.sin(pa) * orbitR;
-        ctx.fillStyle = `rgba(0,212,255,${0.35 * (1 - coll * 0.8)})`;
-        ctx.beginPath(); ctx.arc(mx, my, 1.2, 0, Math.PI*2); ctx.fill();
-      });
+    // Concentric architectural rings — pre-rendered once per system, then
+    // rotated. Rotating the cached sprite reproduces the travelling-dash
+    // animation for a fraction of the cost (was up to 16 dashed arcs/system).
+    let sp = orbitSprites.get(n.id);
+    if(!sp){ sp = buildOrbitSprite(n); orbitSprites.set(n.id, sp); }
+    if(sp){
+      ctx.save();
+      ctx.globalAlpha = (1 - coll * 0.75) * Visual.boost;
+      ctx.rotate(-t * 0.016 * style.dir + style.phase + tremble * 0.01);
+      const sz = sp.size;
+      ctx.drawImage(sp.canvas, -sz/2, -sz/2, sz, sz);
+      ctx.restore();
     }
+
+    // nodal markers — tiny ticks tracking each planet
+    n.planets.forEach(p=>{
+      if(!p.alive) return;
+      const orbitR = p.r + tremble;
+      const pa = p.angle + (style.dir * coll * 1.4);
+      const mx = Math.cos(pa) * orbitR;
+      const my = Math.sin(pa) * orbitR;
+      ctx.fillStyle = `rgba(0,212,255,${0.35 * (1 - coll * 0.8) * Visual.boost})`;
+      ctx.beginPath(); ctx.arc(mx, my, 1.2, 0, Math.PI*2); ctx.fill();
+    });
 
     // planets
     n.planets.forEach(p=>{
@@ -1502,6 +1783,37 @@
   }
 
   // ------------------------------------------------------------------ Absence span (lattice of absence)
+  function buildSpanSprite(len){
+    const res = Math.min(DPR, 2), pad = 20, halfH = 26;
+    const wCss = len + pad * 2, hCss = halfH * 2;
+    const c = document.createElement('canvas');
+    c.width = Math.ceil(wCss * res); c.height = Math.ceil(hCss * res);
+    const g = c.getContext('2d');
+    g.scale(res, res);
+    g.translate(pad, halfH);              // origin at the span centre
+    const half = len / 2;
+
+    g.fillStyle = 'rgba(4,4,7,0.94)';
+    g.beginPath();
+    g.moveTo(-half - 18, -6);
+    g.quadraticCurveTo(0, -23, half + 18, -6);
+    g.lineTo(half + 18, 6);
+    g.quadraticCurveTo(0, 23, -half - 18, 6);
+    g.closePath(); g.fill();
+
+    const grd = g.createLinearGradient(-half, -20, half, 20);
+    grd.addColorStop(0, 'rgba(22,22,30,0.4)');
+    grd.addColorStop(0.5, 'rgba(34,34,46,0.55)');
+    grd.addColorStop(1, 'rgba(22,22,30,0.4)');
+    g.fillStyle = grd;
+    g.beginPath();
+    g.moveTo(-half, -16); g.quadraticCurveTo(0, -16, half, -16);
+    g.lineTo(half, 16);  g.quadraticCurveTo(0, 16, -half, 16);
+    g.closePath(); g.fill();
+
+    return { canvas: c, w: wCss, h: hCss };
+  }
+
   function drawAbsenceSpan(a, b, t){
     const dx = b.x - a.x, dy = b.y - a.y;
     const len = Math.hypot(dx, dy);
@@ -1510,44 +1822,50 @@
     ctx.save();
     ctx.translate(midX, midY); ctx.rotate(ang);
 
-    // Light-eating distortion field — dark geometric span
-    ctx.fillStyle = 'rgba(6,6,10,0.92)';
-    ctx.beginPath();
-    ctx.moveTo(-len/2 - 14, -18); ctx.lineTo(len/2 + 14, -18);
-    ctx.lineTo(len/2 + 14, 18); ctx.lineTo(-len/2 - 14, 18); ctx.closePath(); ctx.fill();
+    const half = len / 2;
 
-    // Warp bulge — space warping between fallen nodes
-    const bulge = Math.sin(t * 0.0014) * 5;
-    const g = ctx.createLinearGradient(-len/2, -20, len/2, 20);
-    g.addColorStop(0, 'rgba(22,22,30,0.4)');
-    g.addColorStop(0.5, 'rgba(34,34,46,0.55)');
-    g.addColorStop(1, 'rgba(22,22,30,0.4)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.moveTo(-len/2, -16); ctx.quadraticCurveTo(0, -16 + bulge, len/2, -16);
-    ctx.lineTo(len/2, 16); ctx.quadraticCurveTo(0, 16 - bulge, -len/2, 16); ctx.closePath(); ctx.fill();
+    // Tapered lens of absence, widest at the midpoint, so the span reads as
+    // warped space rather than a flat bar. Blitted from the length-keyed cache;
+    // the slow warp bulge is approximated by scaling the sprite vertically,
+    // which keeps the animation without re-rasterising the path every frame.
+    // Drawn 1:1, never rescaled. An earlier version animated the warp bulge by
+    // scaling this bitmap vertically, but a non-integer software resample of a
+    // ~600x52 sprite costs more per frame than the path fill it replaced; the
+    // animated contour traces below already keep the span feeling alive.
+    const key = Math.round(len);
+    let sp = spanSprites.get(key);
+    if(!sp){ sp = buildSpanSprite(len); spanSprites.set(key, sp); }
+    ctx.drawImage(sp.canvas, -sp.w / 2, -sp.h / 2, sp.w, sp.h);
 
-    // Contour traces — displaced starlight above and below span
-    ctx.strokeStyle = 'rgba(96,96,116,0.5)';
-    ctx.lineWidth = 1.4;
+    // Contour traces — displaced starlight; the readable signature of absence
+    ctx.strokeStyle = `rgba(120,124,148,${0.55 * Visual.boost})`;
+    ctx.lineWidth = 1.5;
     for(let side of [-1,1]){
       ctx.beginPath();
-      for(let i=0;i<=16;i++){
-        const x = -len/2 + (i/16)*len;
-        const off = Math.sin((i/16)*Math.PI*4.5 + t*0.0017) * 8 * side;
+      for(let i=0;i<=12;i++){
+        const x = -half + (i/12)*len;
+        const off = (11 + Math.sin((i/12)*Math.PI*4.5 + t*0.0017) * 7) * side;
         if(i===0) ctx.moveTo(x, off);
         else ctx.lineTo(x, off);
       }
       ctx.stroke();
     }
 
-    // Anchor flares where span meets absence nodes
-    ctx.strokeStyle = 'rgba(139,148,168,0.18)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(-len/2, -11); ctx.lineTo(-len/2 - 10, -11); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-len/2, 11); ctx.lineTo(-len/2 - 10, 11); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(len/2, -11); ctx.lineTo(len/2 + 10, -11); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(len/2, 11); ctx.lineTo(len/2 + 10, 11); ctx.stroke();
+    // Anchor flares — brighter and glowing, so each span visibly terminates
+    // in the absence nodes rather than fading out at the ends.
+    // Scale the flare glow with device quality; on weak hardware the flat
+    // anchor strokes alone still read as a termination point.
+    const flareA = 0.15 * Visual.boost * Quality.fxScale;
+    if(flareA > 0.02) [-half, half].forEach(sx => bloom(GLOW_AZURE, sx, 0, 26 * sceneScale, flareA));
+    ctx.strokeStyle = `rgba(150,190,255,${0.34 * Visual.boost})`;
+    ctx.lineWidth = 2;
+    [[-half,-1],[half,1]].forEach(pair=>{
+      const sx = pair[0], dir = pair[1];
+      ctx.beginPath();
+      ctx.moveTo(sx, -13); ctx.lineTo(sx + dir*13, -13);
+      ctx.moveTo(sx,  13); ctx.lineTo(sx + dir*13,  13);
+      ctx.stroke();
+    });
 
     ctx.restore();
   }
@@ -1626,25 +1944,36 @@
     setTimeout(()=> els.instr.classList.remove('visible'), 3000);
   }
 
+  // Defensive: an announcement must never be able to break gameplay, so a
+  // missing live region degrades to a no-op rather than throwing.
   function srAnnounce(msg){
     const sr = document.getElementById('sr-live');
+    if(!sr) return;
     sr.textContent = '';
-    void sr.offsetHeight;
+    void sr.offsetHeight;           // force a change so repeated messages re-announce
     sr.textContent = msg;
   }
 
   function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));}
 
+  // Dirty-checked text writes: updateLedger runs every frame, but the values
+  // almost never change, so skip the DOM write when they haven't.
+  const lastText = {};
+  function setText(el, key, val){
+    if(lastText[key] === val) return;
+    lastText[key] = val;
+    el.textContent = val;
+  }
   function updateLedger(){
     const c = Sim.counters();
-    els.cDirect.textContent = c.direct;
-    els.cChain.textContent = c.chain;
-    els.cTotal.textContent = c.total;
-    els.cPlanets.textContent = c.planetsLost;
-    els.cMoons.textContent = c.moonsLost;
-    els.cIntact.textContent = c.intact;
-    els.cChainCount.textContent = c.chainReactionCount;
-    els.ledgerTag.textContent = c.total + ' / 5 collapsed';
+    setText(els.cDirect, 'direct', c.direct);
+    setText(els.cChain, 'chain', c.chain);
+    setText(els.cTotal, 'total', c.total);
+    setText(els.cPlanets, 'planets', c.planetsLost);
+    setText(els.cMoons, 'moons', c.moonsLost);
+    setText(els.cIntact, 'intact', c.intact);
+    setText(els.cChainCount, 'chainCount', c.chainReactionCount);
+    setText(els.ledgerTag, 'tag', c.total + ' / 5 collapsed');
 
     const frag = document.createDocumentFragment();
     let has = false;
@@ -1823,12 +2152,20 @@
     updateKFilament();
   }
 
+  // Capture the current pull and hand it to the recoil animation.
+  function startRecoil(n){
+    n.snapFrom = n.gripProgress || 0;
+    n.snapAngleFrom = n.angleOffset || 0;
+    n.snapT = 1;
+  }
+
   function cancelGrip(){
     if(!Input.active) return;
     const n = Sim.nodes.get(Input.nodeId);
     n.state = 'INTACT';
-    n.gripProgress = 0;
-    n.angleOffset = 0;
+    // Hand the current displacement to the recoil animation instead of
+    // zeroing it, so the strand eases home with follow-through.
+    startRecoil(n);
     Audio.tensionEnd();
     Audio.snap();
     Input.active = false;
@@ -1873,6 +2210,7 @@
         startKeyboardPull(n, el);
       }
     });
+    el.style.width = '44px'; el.style.height = '44px';   // set once, not per frame
     kContainer.appendChild(el);
     kfEls[s.id] = el;
   });
@@ -1922,12 +2260,8 @@
     srAnnounce('Keyboard extraction cancelled.');
     updateKFilament();
   }
-  document.addEventListener('keydown', (ev)=>{
-    if(ev.key === 'Escape'){
-      cancelKeyboardPull();
-      if(Input.active) cancelGrip();
-    }
-  });
+  // (Consolidated keydown handler — Escape plus single-letter shortcuts —
+  //  lives further down, so Escape is handled in exactly one place.)
 
   function updateKFilament(){
     RAW_SYSTEMS.forEach(s=>{
@@ -2069,15 +2403,180 @@
 
     updateKFilament();
     updateLedger();
+    updateBoardSummary();
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 
-  // Expose sim for external inspection/testing (read-only).
-  window.__DBG = { Sim, CFG, Audio, Input, Particles, Screen };
+  // ====================================================================
+  // Board summary — text equivalent of the canvas.
+  // Without this the entire game state exists only as pixels, which makes it
+  // unusable for screen-reader and other non-visual users.
+  // ====================================================================
+  const boardEl = document.getElementById('boardSummary');
+  let lastBoardText = '';
+  function updateBoardSummary(){
+    const ns = [...Sim.nodes.values()];
+    const c = Sim.counters();
+    const detail = ns.map(n=>{
+      if(n.state === 'ABSENCE') return `${n.name} is now an absence node`;
+      const bodies = n.planets.filter(p=>p.alive).length + ((n.moon && n.moon.alive) ? 1 : 0);
+      return `${n.name} intact with ${bodies} orbiting ${bodies === 1 ? 'body' : 'bodies'}`;
+    }).join('; ');
+    const t = `Lattice: ${c.total} of 5 collapsed, ${c.intact} intact. ` +
+              `Direct ${c.direct}, chain ${c.chain}. ` +
+              `Planets lost ${c.planetsLost}, moons lost ${c.moonsLost}. ${detail}.`;
+    if(t === lastBoardText) return;
+    lastBoardText = t;
+    boardEl.textContent = t;
+    refreshUndoBtn();
+    persist();
+  }
+  function toggleBoardSummary(){
+    const on = boardEl.classList.toggle('expanded');
+    srAnnounce(on ? lastBoardText : 'Board summary hidden.');
+  }
 
-  setInstruction('Find the filament', 'Hover or focus a star to reveal its graspable azure strand.');
+  // ====================================================================
+  // High contrast
+  // ====================================================================
+  const contrastBtn = document.getElementById('contrastBtn');
+  let highContrast = false;
+  function setContrast(on){
+    highContrast = !!on;
+    document.body.classList.toggle('hc', highContrast);
+    contrastBtn.setAttribute('aria-pressed', highContrast ? 'true' : 'false');
+    contrastBtn.setAttribute('aria-label', highContrast ? 'Disable high contrast mode' : 'Enable high contrast mode');
+    persist();
+  }
+  contrastBtn.addEventListener('click', ()=>{
+    setContrast(!highContrast);
+    srAnnounce(highContrast ? 'High contrast on.' : 'High contrast off.');
+  });
+  // Canvas-side contrast boost: strengthens key strokes when high contrast is on.
+  const Visual = { get boost(){ return highContrast ? 1.7 : 1; } };
+
+  // ====================================================================
+  // Session persistence — a partially unmade universe survives a reload.
+  // Storage can be unavailable (private mode, disabled); that must never
+  // break the app, so every access is guarded.
+  // ====================================================================
+  const SAVE_KEY = 'starsilk.unmaking.v1';
+  let saveTimer = 0;
+  function persistNow(){
+    try{
+      const absent = [...Sim.nodes.values()]
+        .filter(n => n.state !== 'INTACT')
+        .map(n => ({id:n.id, cause:n.collapseCause, source:n.collapseSource}));
+      localStorage.setItem(SAVE_KEY, JSON.stringify({v:1, hc:highContrast, absent}));
+      return true;
+    }catch(e){ return false; }   // storage unavailable — non-fatal
+  }
+  function persist(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(persistNow, 250);   // debounced: state changes are bursty
+  }
+  function restoreSession(){
+    try{
+      const raw = localStorage.getItem(SAVE_KEY);
+      if(!raw) return 0;
+      const d = JSON.parse(raw);
+      if(!d || d.v !== 1 || !Array.isArray(d.absent)) return 0;
+      if(typeof d.hc === 'boolean') setContrast(d.hc);
+      let count = 0;
+      d.absent.forEach(a=>{ if(Sim.restoreAbsent(a.id, a.cause, a.source)) count++; });
+      return count;
+    }catch(e){ return 0; }
+  }
+
+  // ====================================================================
+  // Undo — restore the most recent collapse
+  // ====================================================================
+  const undoBtn = document.getElementById('undoBtn');
+  let lastCanUndo = null;
+  function refreshUndoBtn(){
+    const can = Sim.canUndo();
+    if(can === lastCanUndo) return;
+    lastCanUndo = can;
+    undoBtn.disabled = !can;
+  }
+  function buildAutopsyIfOpen(){
+    if(document.getElementById('autopsy').style.display === 'flex') buildAutopsy();
+  }
+  function undoLast(){
+    if(!Sim.canUndo()) return;
+    if(!Sim.undoLastCollapse()) return;
+    updateLedger(); updateBoardSummary(); buildAutopsyIfOpen();
+    setInstruction('Collapse reversed.', 'The last system has been restored.');
+    srAnnounce('Last collapse reversed.');
+  }
+  undoBtn.addEventListener('click', undoLast);
+
+  // ====================================================================
+  // Export the lattice as a PNG
+  // ====================================================================
+  document.getElementById('exportBtn').addEventListener('click', ()=>{
+    try{
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = `starsilk-unmaking-${Sim.counters().total || 0}of5.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setInstruction('Lattice exported.', 'A PNG of the current sky has been saved.');
+      srAnnounce('Lattice exported as PNG.');
+    }catch(e){
+      srAnnounce('Export is unavailable in this browser.');
+    }
+  });
+
+  // ====================================================================
+  // Keyboard shortcuts
+  // ====================================================================
+  function isModalOpen(){
+    return document.getElementById('confirm').style.display === 'flex'
+        || document.getElementById('autopsy').style.display === 'flex';
+  }
+  document.addEventListener('keydown', (ev)=>{
+    if(ev.key === 'Escape'){
+      cancelKeyboardPull();
+      if(Input.active) cancelGrip();
+      return;
+    }
+    // Never hijack keys during a grip, while a dialog is open, or with modifiers.
+    if(ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if(isModalOpen() || Input.active) return;
+    const k = ev.key.toLowerCase();
+    switch(k){
+      case 'r': document.getElementById('resetBtn').click(); break;
+      case 'a': document.getElementById('autopsyBtn').click(); break;
+      case 'm': document.getElementById('muteBtn').click(); break;
+      case 'u': undoLast(); break;
+      case 'e': document.getElementById('exportBtn').click(); break;
+      case 'c':
+        setContrast(!highContrast);
+        srAnnounce(highContrast ? 'High contrast on.' : 'High contrast off.');
+        break;
+      case 'h': case '?': toggleBoardSummary(); break;
+      default: return;                    // unhandled — don't swallow the key
+    }
+    ev.preventDefault();
+  });
+
+  // Expose sim for external inspection/testing (read-only).
+  window.__DBG = { Sim, CFG, Audio, Input, Particles, Screen, Visual,
+                   setContrast, undoLast, persist, persistNow, restoreSession,
+                   get highContrast(){ return highContrast; },
+                   get boardText(){ return lastBoardText; } };
+
+  // Restore a previous session, if there is one, before the first frame.
+  const restoredCount = restoreSession();
+  if(restoredCount > 0){
+    setInstruction('Lattice restored.', `${restoredCount} system${restoredCount===1?'':'s'} still absent.`);
+  } else {
+    setInstruction('Find the filament', 'Hover or focus a star to reveal its graspable azure strand.');
+  }
   updateLedger();
+  updateBoardSummary();
+  refreshUndoBtn();
 
 })();
 </script>
