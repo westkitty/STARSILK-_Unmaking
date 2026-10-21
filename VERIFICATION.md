@@ -36,7 +36,30 @@ The following visual asset families were inspected and materially improved (all 
 | Typography/ornament | REPAIR | Declared `'Ironfall'` font wasn't loading (fell back to generic system-ui); replaced with authored layered display treatment (letterpress shadow, border ornament) |
 | UI glass/depth | REFINE | Stronger header glass, border, shadow; ledger and control depth |
 
-**26/26 functional acceptance checks re-verified post-overhaul** (sim counters, collapse, chain reactions, reconciliation, reset, particle system, screen shake — all unchanged and passing).
+### Correction to the previous report
+
+The earlier "AAA Visual Overhaul" entries above described intended features. On inspection with a real pixel-rendering harness, **three of those features were not actually visible at runtime**, and the game did not render at all. They are listed here because they were the highest-impact items in this pass. Nothing in the previous report should be read as having been visually confirmed.
+
+### Critical defects found and fixed (this pass)
+
+| # | Defect | Effect | Fix |
+|---|--------|--------|-----|
+| 1 | `drawFilament(a,b,gripped,pullOffset,tension)` referenced `t`, which was neither a parameter nor in scope | **`ReferenceError` on the first frame.** Because `requestAnimationFrame(frame)` sits at the end of `frame()`, the exception killed the loop permanently — a blank canvas and an unplayable game | Added a `t` parameter and passed the frame timestamp from the call site |
+| 2 | `drawStar` did `ctx.translate(n.x+ox, n.y)` then built its gradients at `(n.x, n.y)` | Gradient centre sat ~700 px from the arc being filled, outside the gradient's outer radius, so **the star's glow and core body filled with a fully transparent colour** — stars rendered as bare engraving rings with no luminous body | Build gradients at local `(0,0)`, i.e. the same space as the arc |
+| 3 | Starfield drift was wrapped with `% 1` on a *pixel* value, then multiplied by `W` | The wrap period was 1 px, so a 1 px change teleported a star the full screen width. At 60 fps stars jumped ~360 px per frame — a violent strobe, not a drifting sky | Drift and wrap in pixel space by the screen extent (`% W` / `% H`) |
+
+### Additional defects found and fixed
+
+| # | Defect | Fix |
+|---|--------|-----|
+| 4 | No `devicePixelRatio` handling — the backing store matched CSS pixels | DPR-aware sizing (capped at 2) with a single `setTransform`, so the scene is crisp on HiDPI without a 4× fill-rate cost |
+| 5 | The canvas is created with `{alpha:false}`, so the CSS background gradient was never visible | Replaced with a genuinely rendered nebula, pre-rendered once at 1/6 resolution |
+| 6 | No additive blending anywhere — all glow was flat alpha layering | Added a cached glow-sprite bloom pass using `globalCompositeOperation='lighter'` |
+| 7 | `Screen.getVignetteAlpha()` was computed but never called — the collapse vignette pulse never rendered | Wired into the render loop via a pre-rendered vignette sprite |
+| 8 | Planets had **no solid body** — only translucent band ellipses and a halo, so they read as ghosts | Shaded spheres: limb-darkened body, banded surface clipped to the disc, terminator, specular, and rim light, all oriented to their own system's star |
+| 9 | Collapse had no particle event until it *finished* | Added an inward implosion burst at the moment of surrender, plus an additive flash and heavier debris on completion |
+| 10 | Glow radii were absolute pixels, so on a 390 px-wide viewport bloom covered ~40% of the screen | `sceneScale` factor derived from viewport size |
+| 11 | Buttons had hover/active styles but no keyboard focus ring | Added `:focus-visible` rings; reduced-motion is now honoured in JS (shake, drift, twinkle), not only in CSS |
 
 ### AAA Visual Overhaul — executed pass (this session)
 
@@ -59,15 +82,27 @@ A comprehensive visual finishing pass was applied to the existing game, preservi
 
 ## Not executed in this environment (browser-only)
 
-- Full pointer drag-and-pull gesture through the rendered Canvas (no `CanvasRenderingContext2D` in jsdom)
-- Collapse animation timing and the tension-progress ring (driven by `requestAnimationFrame` / `performance.now`, which jsdom does not drive faithfully)
 - Web Audio synthesis (stellar drone, tension, collapse transient, silence) — no `AudioContext` in jsdom
-- Visual polish states (filament snap/recoil/slack, lensing contours) at runtime
-- Live browser accessibility audit (focus order, ARIA announcements, contrast, reduced motion)
+- Live browser accessibility audit (focus order, ARIA announcements, contrast) — markup and CSS were reviewed, not audited by a tool
+- GPU-composited frame pacing on real hardware; frame timings below come from a software rasteriser and are a relative signal only
+- Pointer/touch gesture plumbing end-to-end in a real browser (hit-testing and state transitions are unit-verified; the browser event path is not)
 
 ## Method
 
-The simulation (graph, object inventory, collapse rules, event ledger, counters) was exercised head-first with `jsdom` by driving `Sim.update` with real `dt`. JavaScript syntax was validated with `node --check`, and the file serves cleanly (`HTTP 200`) from a local server. The complete acceptance suite should be re-run in a real desktop and mobile browser before release.
+**Rendering is now verified against real pixels.** A headless harness loads `index.html` in `jsdom`, backs `HTMLCanvasElement.getContext` with `@napi-rs/canvas`, and drives the app through a manually pumped `requestAnimationFrame` with a seeded PRNG — so frames are deterministic and directly comparable. Captured frames are analysed numerically (per-region mean luminance, background baseline, bright-pixel fraction, contrast) rather than by eye.
+
+Results across four viewports (390×844, 768×1024, 1200×800, 1920×1080):
+
+| Suite | Result |
+|-------|--------|
+| Visual / pixel assertions | **11 passed, 0 failed** at every viewport |
+| Functional acceptance (sim, counters, chains, reconciliation, reset, no double-count) | **33 passed, 0 failed** at mobile and desktop |
+| Performance / memory-boundedness | **4 passed, 0 failed** |
+| Config matrix (DPR 1/2/3, mobile, reduced-motion, combinations) | renders clean, **0 runtime errors** |
+
+Measured on the initial scene at 1200×800: background luminance **1.5–6.4**, star cores **107–185**, bright-pixel fraction **~17%** — a dark cosmos with high-contrast luminous stars, and the void is not washed out by bloom. After destroying all five systems the scene remains legible (std ≈ 29), confirming the absence lattice reads as structure.
+
+JavaScript syntax was validated with `node --check`, and the file serves cleanly (`HTTP 200`). See "Not executed" above for what still requires a real browser.
 
 ## Inventory reconciliation
 

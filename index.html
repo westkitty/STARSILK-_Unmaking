@@ -362,6 +362,34 @@
   }
 
   /* ========================================================================
+     INTERACTION STATES — visible keyboard focus + entrance motion
+     ======================================================================== */
+  button:focus-visible,
+  [role="button"]:focus-visible{
+    outline:2px solid var(--azure);
+    outline-offset:2px;
+    box-shadow:0 0 0 5px rgba(0,212,255,0.20);
+  }
+  button:focus:not(:focus-visible){outline:none;}
+
+  /* Only the newest ledger entry animates in; older entries hold still. */
+  #ledger .event.is-new{animation:eventIn .32s cubic-bezier(.2,.8,.2,1);}
+  @keyframes eventIn{
+    from{opacity:0;transform:translateX(-8px);}
+    to{opacity:1;transform:none;}
+  }
+
+  /* Overlays fade and settle rather than snapping into place. */
+  #confirm{animation:overlayIn .20s ease-out;}
+  #confirm .box{animation:boxIn .26s cubic-bezier(.2,.8,.2,1);}
+  #autopsy{animation:overlayIn .22s ease-out;}
+  @keyframes overlayIn{from{opacity:0}to{opacity:1}}
+  @keyframes boxIn{
+    from{opacity:0;transform:translateY(12px) scale(.98);}
+    to{opacity:1;transform:none;}
+  }
+
+  /* ========================================================================
      ACCESSIBILITY
      ======================================================================== */
   #sr-live{
@@ -620,7 +648,7 @@
         ctx.restore();
       });
     }
-    return {spawn,update,draw};
+    return {spawn, update, draw, get activeCount(){ return activeCount; }};
   })();
 
   // ------------------------------------------------------------------ Screen effects (shake + vignette)
@@ -644,6 +672,24 @@
         const base = 0.5;
         const pulse = vignettePulseTime > 0 ? CFG.vignettePulse * Math.sin(vignettePulseTime * Math.PI * 4) * (vignettePulseTime/0.5) : 0;
         return base + pulse;
+      }
+    };
+  })();
+
+  // ------------------------------------------------------------------ Collapse flash (brief, additive)
+  // A short bright bloom at the instant a star finishes surrendering. It is a
+  // single timestamp, not a particle system, so it costs nothing when idle.
+  const Flash = (function(){
+    let t = 0, x = 0, y = 0, r = 0;
+    return {
+      fire(px, py, radius){ t = 1; x = px; y = py; r = radius; },
+      update(dt){ if(t > 0) t = Math.max(0, t - dt / 0.45); },
+      draw(){
+        if(t <= 0) return;
+        const e = t * t;                        // ease-out: hard hit, quick decay
+        const grow = 1 - t;
+        bloom(GLOW_WHITE, x, y, r * (1.1 + grow * 2.6) * sceneScale, 0.50 * e);
+        bloom(GLOW_AZURE, x, y, r * (2.0 + grow * 4.2) * sceneScale, 0.26 * e);
       }
     };
   })();
@@ -770,6 +816,18 @@
       if(cause === 'direct'){ this.directExtractions++; Audio.collapse(); }
       else { this.chainCollapses++; this.chainReactionCount++; Audio.collapse(); }
 
+      // Implosion herald — stray matter dragged inward as the star gives way.
+      // Velocity points back at the core, so the debris falls in rather than out.
+      for(let i=0;i<18;i++){
+        const a = Math.random()*Math.PI*2;
+        const rad = CFG.starBaseRadius * (2.2 + Math.random()*2.6);
+        const spd = 60 + Math.random()*120;
+        Particles.spawn(n.x + Math.cos(a)*rad, n.y + Math.sin(a)*rad,
+                        -Math.cos(a)*spd, -Math.sin(a)*spd,
+                        0.45 + Math.random()*0.5, 1.2 + Math.random()*1.8, '#cfe9ff', 'debris');
+      }
+      Screen.shake(0.6);
+
       const planets = n.planets.filter(p=>p.alive).map(p=>p.id);
       const moons = n.moon && n.moon.alive ? [n.moon.id] : [];
       this.log(cause === 'direct' ? 'direct' : 'chain',
@@ -803,11 +861,16 @@
       Audio.snap();
       Screen.shake(1);
       Screen.pulseVignette();
-      // burst debris particles at the star position
-      for(let i=0;i<14;i++){
+      // The moment of surrender: a hard additive flash...
+      Flash.fire(n.x, n.y, CFG.starBaseRadius * 1.4);
+      // ...followed by debris flung clear of the new absence.
+      for(let i=0;i<22;i++){
         const a = Math.random()*Math.PI*2;
-        const spd = 40 + Math.random()*160;
-        Particles.spawn(n.x, n.y, Math.cos(a)*spd, Math.sin(a)*spd, 0.5 + Math.random()*0.9, 1.5 + Math.random()*2.5, '#00d4ff', 'debris');
+        const spd = 40 + Math.random()*190;
+        const hot = i % 3 === 0;
+        Particles.spawn(n.x, n.y, Math.cos(a)*spd, Math.sin(a)*spd,
+          0.5 + Math.random()*0.9, 1.5 + Math.random()*2.5,
+          hot ? '#eaf6ff' : '#00d4ff', 'debris');
       }
     },
 
@@ -839,6 +902,7 @@
       });
       Particles.update(dt);
       Screen.update(dt);
+      Flash.update(dt);
     },
 
     reset(){
@@ -848,12 +912,119 @@
 
   Sim.init();
 
-  // ------------------------------------------------------------------ Canvas setup (must come before drawing functions reference it)
+  // ------------------------------------------------------------------ Motion preference (JS-side, complements the CSS media query)
+  const motionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  const Motion = { get reduced(){ return !!(motionQuery && motionQuery.matches); } };
+
+  // ------------------------------------------------------------------ Adaptive quality (performance-first, auto-degrades on weak devices)
+  const Quality = (function(){
+    let level = 2;                 // 2 = high, 1 = medium, 0 = low
+    let frames = 0, acc = 0;
+    return {
+      get level(){ return level; },
+      get dprCap(){ return level >= 2 ? 2 : (level === 1 ? 1.5 : 1); },
+      get starScale(){ return level >= 2 ? 1 : (level === 1 ? 0.72 : 0.45); },
+      get fxScale(){ return Motion.reduced ? 0.4 : (level >= 2 ? 1 : (level === 1 ? 0.7 : 0.4)); },
+      get shake(){ return !Motion.reduced; },
+      sample(dt){
+        frames++; acc += dt;
+        if(acc >= 1.25){
+          const fps = frames / acc; frames = 0; acc = 0;
+          if(fps < 40 && level > 0) level--;
+          else if(fps > 57 && level < 2) level++;
+        }
+      }
+    };
+  })();
+
+  // ------------------------------------------------------------------ Canvas setup (DPR-aware: crisp on HiDPI without costing fill rate needlessly)
   const canvas = document.getElementById('stage');
   const ctx = canvas.getContext('2d', {alpha:false});
-  let W, H;
-  function resize(){ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; Sim.nodes.forEach(n=>{ n.x = n.cx * W; n.y = n.cy * H; }); }
+  let W = 1, H = 1, DPR = 1, sceneScale = 1;
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio || 1, Quality.dprCap);
+    W = Math.max(1, window.innerWidth); H = Math.max(1, window.innerHeight);
+    // Glow radii are absolute pixels. On a small viewport they would swallow
+    // the whole screen, so scale them down to keep the composition readable.
+    sceneScale = clamp(Math.min(W, H) / 800, 0.6, 1);
+    canvas.width  = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    // All game maths stays in CSS pixels; the backing store carries the device resolution.
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    Sim.nodes.forEach(n=>{ n.x = n.cx * W; n.y = n.cy * H; });
+    buildNebula();
+  }
   window.addEventListener('resize', resize);
+
+  // ------------------------------------------------------------------ Cached glow sprites (cheap, reusable bloom)
+  // One pre-rendered radial sprite stretched per use is dramatically cheaper
+  // than constructing a fresh radial gradient for every glow, every frame.
+  function makeGlowSprite(size, r, g, b){
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const gx = c.getContext('2d');
+    const rg = gx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    rg.addColorStop(0.00, `rgba(${r},${g},${b},0.90)`);
+    rg.addColorStop(0.08, `rgba(${r},${g},${b},0.42)`);
+    rg.addColorStop(0.22, `rgba(${r},${g},${b},0.16)`);
+    rg.addColorStop(0.48, `rgba(${r},${g},${b},0.050)`);
+    rg.addColorStop(0.75, `rgba(${r},${g},${b},0.012)`);
+    rg.addColorStop(1.00, `rgba(${r},${g},${b},0)`);
+    gx.fillStyle = rg;
+    gx.fillRect(0, 0, size, size);
+    return c;
+  }
+  const GLOW_WHITE = makeGlowSprite(128, 255, 255, 255);
+  const GLOW_AZURE = makeGlowSprite(128,   0, 212, 255);
+
+  // Additive blit of a cached glow sprite — this is the "bloom" pass.
+  function bloom(sprite, x, y, radius, alpha){
+    if(alpha <= 0.004 || radius <= 0.2) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.drawImage(sprite, x - radius, y - radius, radius * 2, radius * 2);
+    ctx.restore();
+  }
+
+  // ------------------------------------------------------------------ Nebula (pre-rendered atmospheric depth)
+  // The canvas is opaque ({alpha:false}), so the CSS background gradient never
+  // showed. Depth is now genuinely rendered, at 1/6 resolution for near-zero cost.
+  let nebulaCanvas = null;
+  function buildNebula(){
+    const nw = Math.max(2, Math.round(W / 6)), nh = Math.max(2, Math.round(H / 6));
+    const c = document.createElement('canvas');
+    c.width = nw; c.height = nh;
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, nw, nh);
+    const bg = g.createRadialGradient(nw*0.5, nh*0.42, 0, nw*0.5, nh*0.42, Math.max(nw,nh)*0.8);
+    bg.addColorStop(0.00, '#0b0f1c');
+    bg.addColorStop(0.50, '#05070e');
+    bg.addColorStop(1.00, '#010103');
+    g.fillStyle = bg; g.fillRect(0, 0, nw, nh);
+    g.globalCompositeOperation = 'lighter';
+    const tints = [[20,48,104],[10,66,120],[54,22,92],[8,58,80],[26,36,110]];
+    for(let i=0;i<11;i++){
+      const cx = Math.random()*nw, cy = Math.random()*nh;
+      const rr = (0.10 + Math.random()*0.28) * Math.max(nw,nh);
+      const tint = tints[i % tints.length];
+      const a = 0.045 + Math.random()*0.085;
+      const rg = g.createRadialGradient(cx, cy, 0, cx, cy, rr);
+      rg.addColorStop(0.0, `rgba(${tint[0]},${tint[1]},${tint[2]},${a})`);
+      rg.addColorStop(0.5, `rgba(${tint[0]},${tint[1]},${tint[2]},${a*0.42})`);
+      rg.addColorStop(1.0, `rgba(${tint[0]},${tint[1]},${tint[2]},0)`);
+      g.fillStyle = rg;
+      g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI*2); g.fill();
+    }
+    nebulaCanvas = c;
+  }
+  function drawNebula(){
+    if(!nebulaCanvas) return;
+    ctx.drawImage(nebulaCanvas, 0, 0, W, H);
+  }
+
   resize();
 
   // ------------------------------------------------------------------ Starfield (3 parallax layers + depth)
@@ -875,29 +1046,40 @@
         alphaMult: layer.alphaMult,
         driftX: (Math.random()*2-1)*0.3,
         driftY: (Math.random()*2-1)*0.3,
+        rank: Math.random(),   // stable ordering so quality drops thin the field evenly
       });
     }
   });
 
   function drawStarfield(t){
+    const scale = Quality.starScale;
     ctx.save();
-    starfield.forEach(s=>{
-      // parallax: farther layers move slower
+    ctx.globalCompositeOperation = 'lighter';
+    for(let i=0;i<starfield.length;i++){
+      const s = starfield[i];
+      if(s.rank > scale) continue;                 // adaptive density
+      // parallax: farther layers drift slower
       const mult = 1 - s.layer * 0.28;
-      const a = (s.x * W + s.y * H * 0.5 + t * s.speed * 60 * mult + t * s.driftX * 0.15) % 1;
-      const b = (s.y * H + s.x * W * 0.3 - t * s.speed * 40 * mult - t * s.driftY * 0.15) % 1;
-      const px = a * W, py = b * H;
-      const alpha = s.alphaMult * (0.4 + 0.6 * Math.sin(t * 0.0018 + s.twinkle));
-      if(alpha <= 0) return;
+      // Drift in PIXEL space and wrap by the screen extent. Wrapping by 1px
+      // (then scaling by W) teleported every star across the viewport each frame.
+      let px = s.x * W + t * s.speed * 60 * mult + t * s.driftX * 0.15;
+      let py = s.y * H - t * s.speed * 40 * mult - t * s.driftY * 0.15;
+      px = ((px % W) + W) % W;
+      py = ((py % H) + H) % H;
+      const tw = 0.45 + 0.55 * Math.sin(t * 0.0018 + s.twinkle);
+      const alpha = s.alphaMult * (Motion.reduced ? 0.85 : tw);
+      if(alpha <= 0.01) continue;
+      const rad = s.mag * 0.55 + 0.35;
+      // soft halo from the cached sprite + a crisp core: reads as a real star
+      bloom(GLOW_WHITE, px, py, rad * 3.4, alpha * 0.15);
+      ctx.globalAlpha = Math.min(1, alpha);
       ctx.fillStyle = s.color;
-      ctx.globalAlpha = alpha;
-      ctx.beginPath(); ctx.arc(px, py, s.mag * 0.55 + 0.35, 0, Math.PI*2); ctx.fill();
-      // occasional brighter "distant sun" glint on far layer
-      if(s.layer===0 && Math.sin(t*0.0007 + s.twinkle*3) > 0.96){
-        ctx.fillStyle = 'rgba(240,248,255,0.5)';
-        ctx.beginPath(); ctx.arc(px,py,s.mag*1.6,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, rad, 0, Math.PI*2); ctx.fill();
+      // rare distant-sun glint
+      if(s.layer === 0 && Math.sin(t*0.0007 + s.twinkle*3) > 0.96){
+        bloom(GLOW_WHITE, px, py, rad * 9, 0.16);
       }
-    });
+    }
     ctx.restore();
   }
 
@@ -930,21 +1112,63 @@
   // ------------------------------------------------------------------ Star core (premium layered)
   function drawStar(n, t){
     const r = CFG.starBaseRadius;
-    const ox = Math.sin(t * 0.0028) * n.angleOffset;
-    const contract = n.state === 'COLLAPSING' ? (1 - n.collapseT) : 1;
+    const ox = Motion.reduced ? 0 : Math.sin(t * 0.0028) * n.angleOffset;
+    const contract = n.state === 'COLLAPSING' ? Math.max(0.08, 1 - n.collapseT) : 1;
     const cr = r * Math.max(0.1, contract);
-    const glowR = r * (2.9 - 1.5 * (1 - contract));
-    ctx.save();
-    ctx.translate(n.x + ox, n.y);
+    const alive = n.state !== 'ABSENCE';
+    const sx = n.x + ox, sy = n.y;
+    const ph = (n.id.charCodeAt(n.id.length - 1) || 0) * 0.9;
 
-    // Light failure during collapse: outer glow dies first
-    if(n.state !== 'ABSENCE'){
-      ctx.globalAlpha = 0.85 - 0.45 * (1 - contract);
-      ctx.fillStyle = gradStar(n.x, n.y, glowR, n.hue, true);
-      ctx.beginPath(); ctx.arc(0, 0, glowR, 0, Math.PI*2); ctx.fill();
+    // --- Additive bloom halo (cached sprites — no per-frame gradient cost)
+    if(alive){
+      bloom(GLOW_WHITE, sx, sy, r * (2.2 - 0.8 * (1 - contract)) * sceneScale, 0.26 * contract);
+      bloom(GLOW_AZURE, sx, sy, r * (3.4 - 1.3 * (1 - contract)) * sceneScale, 0.05 * contract);
     }
 
-    // Structural engraving rings — delicate orbital engraving around core
+    ctx.save();
+    ctx.translate(sx, sy);
+
+    // --- Corona: luminous envelope, the first thing to die during surrender
+    if(alive){
+      const coronaR = cr * 2.05;
+      const cg = ctx.createRadialGradient(0, 0, cr * 0.5, 0, 0, coronaR);
+      cg.addColorStop(0.00, `hsla(${n.hue}, 88%, 72%, ${0.70 * contract})`);
+      cg.addColorStop(0.34, `hsla(${n.hue}, 80%, 55%, ${0.30 * contract})`);
+      cg.addColorStop(0.70, `hsla(${n.hue}, 70%, 40%, ${0.10 * contract})`);
+      cg.addColorStop(1.00, `hsla(${n.hue}, 60%, 30%, 0)`);
+      ctx.fillStyle = cg;
+      ctx.beginPath(); ctx.arc(0, 0, coronaR, 0, Math.PI*2); ctx.fill();
+    }
+
+    // --- Photosphere: limb-darkened body so it reads as a sphere, not a flat disc
+    if(alive){
+      const pg = ctx.createRadialGradient(-cr*0.16, -cr*0.16, cr*0.05, 0, 0, cr);
+      pg.addColorStop(0.00, '#ffffff');
+      pg.addColorStop(0.30, `hsl(${n.hue}, 96%, 84%)`);
+      pg.addColorStop(0.62, `hsl(${n.hue}, 84%, 62%)`);
+      pg.addColorStop(0.88, `hsl(${n.hue}, 72%, 42%)`);
+      pg.addColorStop(1.00, `hsl(${n.hue}, 62%, 26%)`);
+      ctx.fillStyle = pg;
+      ctx.beginPath(); ctx.arc(0, 0, cr, 0, Math.PI*2); ctx.fill();
+    }
+
+    // --- Granulation: faint surface mottling for material character
+    if(alive && cr > 6){
+      ctx.save();
+      ctx.beginPath(); ctx.arc(0, 0, cr, 0, Math.PI*2); ctx.clip();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = `hsla(${n.hue}, 90%, 72%, 0.09)`;
+      for(let k=0;k<5;k++){
+        const a  = (k/5)*Math.PI*2 + t*0.0009 + ph;
+        const rr = cr * (0.28 + 0.40 * ((k*0.37) % 1));
+        ctx.beginPath();
+        ctx.arc(Math.cos(a)*rr, Math.sin(a*1.3)*rr*0.8, cr*(0.20 + 0.13*((k*0.61)%1)), 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // --- Structural engraving rings: architectural orbital detail
     const layers = 5;
     for(let i=0;i<layers;i++){
       const lr = cr * (0.95 - i * 0.17);
@@ -958,27 +1182,21 @@
       ctx.setLineDash([]);
     }
 
-    // Inner caustic ring — light concentrating at the edge before surrender
-    if(n.state !== 'ABSENCE' && contract > 0.3){
+    // --- Inner caustic: light concentrating at the edge just before surrender
+    if(alive && contract > 0.3){
       const causticR = cr * 0.92;
-      const g2 = ctx.createRadialGradient(0,0, causticR*0.7, 0,0, causticR*1.05);
-      g2.addColorStop(0, `hsla(${n.hue}, 70%, 50%, 0)`);
-      g2.addColorStop(0.5, `hsla(${n.hue}, 70%, 60%, 0.35)`);
-      g2.addColorStop(1, `hsla(${n.hue}, 70%, 50%, 0)`);
+      const g2 = ctx.createRadialGradient(0, 0, causticR*0.7, 0, 0, causticR*1.05);
+      g2.addColorStop(0.0, `hsla(${n.hue}, 70%, 50%, 0)`);
+      g2.addColorStop(0.5, `hsla(${n.hue}, 70%, 62%, 0.38)`);
+      g2.addColorStop(1.0, `hsla(${n.hue}, 70%, 50%, 0)`);
       ctx.fillStyle = g2;
-      ctx.beginPath(); ctx.arc(0,0, causticR*1.05, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, 0, causticR*1.05, 0, Math.PI*2); ctx.fill();
     }
 
-    // Core body — luminous center that contracts inward on surrender
-    if(n.state !== 'ABSENCE'){
-      ctx.fillStyle = gradStar(n.x, n.y, cr, n.hue, true);
-      ctx.beginPath(); ctx.arc(0, 0, cr, 0, Math.PI*2); ctx.fill();
-      // Bright core highlight (off-center)
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.beginPath(); ctx.arc(-cr*0.22, -cr*0.22, cr*0.32, 0, Math.PI*2); ctx.fill();
-      // Subtle secondary highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.25)';
-      ctx.beginPath(); ctx.arc(cr*0.18, cr*0.28, cr*0.2, 0, Math.PI*2); ctx.fill();
+    // --- Specular glint
+    if(alive){
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.beginPath(); ctx.arc(-cr*0.24, -cr*0.24, cr*0.30, 0, Math.PI*2); ctx.fill();
     }
 
     // Grip fractures — silk being pulled, the core deforming
@@ -1007,37 +1225,66 @@
   }
 
   // ------------------------------------------------------------------ Planets (banded surface + atmosphere)
-  function drawPlanet(ctx, cx, cy, r, angle, orbitR, color, coll, isMoon){
-    const px = Math.cos(angle) * orbitR;
-    const py = Math.sin(angle) * orbitR;
+  // Lit by their own system's star, which sits at the local origin — so the
+  // terminator and rim light are derived from the direction back to (0,0).
+  function drawPlanet(ctx, r, angle, orbitR, color, coll){
     const pr = orbitR * (1 - coll * 0.9);
     const sx = Math.cos(angle) * pr;
     const sy = Math.sin(angle) * pr;
     const ps = r * (1 - coll * 0.55);
-    if(ps <= 0) return;
+    if(ps <= 0.4) return;
     ctx.save();
     ctx.translate(sx, sy);
+
     // atmospheric halo
+    ctx.globalAlpha = 0.15 * (1 - coll * 0.6);
     ctx.fillStyle = color;
-    ctx.globalAlpha = 0.18 * (1 - coll * 0.6);
-    ctx.beginPath(); ctx.arc(0, 0, ps * 2.4, 0, Math.PI*2); ctx.fill();
-    // banded surface — horizontal stripes for cosmic body character
+    ctx.beginPath(); ctx.arc(0, 0, ps * 2.3, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+
+    const lit = Math.atan2(-sy, -sx);          // direction back toward the star
+    const lx = Math.cos(lit), ly = Math.sin(lit);
+
+    // solid body — lit hemisphere toward the star, dark limb away from it
+    const bg = ctx.createRadialGradient(lx*ps*0.50, ly*ps*0.50, ps*0.06, 0, 0, ps*1.04);
+    bg.addColorStop(0.00, '#ffffff');
+    bg.addColorStop(0.26, color);
+    bg.addColorStop(0.70, color);
+    bg.addColorStop(1.00, 'rgba(3,4,10,0.92)');
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.arc(0, 0, ps, 0, Math.PI*2); ctx.fill();
+
+    // banded surface, clipped to the disc
+    ctx.save();
+    ctx.beginPath(); ctx.arc(0, 0, ps, 0, Math.PI*2); ctx.clip();
     const bands = 5;
     for(let b=0;b<bands;b++){
       const by = -ps + (b / bands) * ps * 2;
       const bh = (ps * 2) / bands * 0.7;
-      ctx.fillStyle = b % 2 === 0 ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.18)';
-      ctx.beginPath();
-      ctx.ellipse(0, by, ps * 0.95, bh * 0.5, 0, 0, Math.PI*2);
-      ctx.fill();
+      ctx.fillStyle = b % 2 === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.14)';
+      ctx.beginPath(); ctx.ellipse(0, by, ps * 0.98, bh * 0.5, 0, 0, Math.PI*2); ctx.fill();
     }
-    // equatorial accent line
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.ellipse(0,0, ps*0.92, ps*0.42, 0, 0, Math.PI*2); ctx.stroke();
-    // specular highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.beginPath(); ctx.arc(-ps*0.3, -ps*0.3, ps*0.28, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    // terminator: deepen the shadow on the hemisphere facing away from the star
+    const tg = ctx.createRadialGradient(lx*ps*0.52, ly*ps*0.52, ps*0.10, 0, 0, ps*1.06);
+    tg.addColorStop(0.00, 'rgba(0,0,0,0)');
+    tg.addColorStop(0.50, 'rgba(0,0,0,0.14)');
+    tg.addColorStop(1.00, 'rgba(0,0,0,0.62)');
+    ctx.fillStyle = tg;
+    ctx.beginPath(); ctx.arc(0, 0, ps, 0, Math.PI*2); ctx.fill();
+
+    // specular highlight, positioned by the light direction
+    ctx.fillStyle = 'rgba(255,255,255,0.40)';
+    ctx.beginPath(); ctx.arc(lx*ps*0.40, ly*ps*0.40, ps*0.23, 0, Math.PI*2); ctx.fill();
+
+    // rim light — thin bright arc on the lit edge
+    if(ps > 1.6){
+      ctx.strokeStyle = 'rgba(190,215,255,0.30)';
+      ctx.lineWidth = Math.max(0.55, ps*0.10);
+      ctx.beginPath(); ctx.arc(0, 0, ps*0.94, lit - 1.15, lit + 1.15); ctx.stroke();
+    }
+
     ctx.restore();
   }
 
@@ -1085,7 +1332,7 @@
     n.planets.forEach(p=>{
       if(!p.alive) return;
       const coll = n.state === 'COLLAPSING' ? n.collapseT : 0;
-      drawPlanet(ctx, n.x, n.y, p.size, p.angle + (style.dir * coll * 1.4), p.r, p.color, coll, false);
+      drawPlanet(ctx, p.size, p.angle + (style.dir * coll * 1.4), p.r, p.color, coll);
     });
 
     // moon
@@ -1099,14 +1346,14 @@
         const mR = n.moon.r + tremble;
         ctx.arc(Math.cos(p.angle)*p.r*(1-coll*0.9), Math.sin(p.angle)*p.r*(1-coll*0.9), mR, 0, Math.PI*2);
         ctx.stroke();
-        drawPlanet(ctx, n.x, n.y, n.moon.size, p.angle + n.moon.angle, p.r*(1-coll*0.9), n.moon.color, coll, true);
+        drawPlanet(ctx, n.moon.size, p.angle + n.moon.angle, p.r*(1-coll*0.9), n.moon.color, coll);
       }
     }
     ctx.restore();
   }
 
   // ------------------------------------------------------------------ Starsilk filament (dimensional barcode ribbon)
-  function drawFilament(a, b, gripped, pullOffset, tension){
+  function drawFilament(a, b, gripped, pullOffset, tension, t){
     if(a.state === 'ABSENCE' || b.state === 'ABSENCE') return;
     ctx.save();
     const dx = b.x - a.x, dy = b.y - a.y;
@@ -1127,6 +1374,15 @@
 
     const baseW = 7.5 + tension * 13;
     const pulse = Math.sin(t * 0.011 + (a.id < b.id ? 0 : 1.7)) * (1 + tension * 0.35);
+
+    // Additive aura — 'lighter' gives the strand a true bloom read
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = `rgba(0,212,255,${0.09 + tension * 0.11})`;
+    ctx.lineWidth = baseW * 3.0 + pulse * 2.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-len/2, 0); ctx.lineTo(len/2, 0); ctx.stroke();
+    ctx.restore();
 
     // Outer luminous aura — dimensional depth
     ctx.strokeStyle = `rgba(0,212,255,${0.12 + tension*0.16})`;
@@ -1196,6 +1452,15 @@
     rimG.addColorStop(1, `rgba(0,212,255,0)`);
     ctx.fillStyle = rimG;
     ctx.beginPath(); ctx.arc(n.x, n.y, r*1.08, 0, Math.PI*2); ctx.fill();
+
+    // Photon ring — the bright thin circle of light grazing the horizon
+    const photon = 0.55 + 0.45 * Math.sin(t * 0.0016 + n.hue);
+    ctx.strokeStyle = `rgba(198,232,255,${0.20 + 0.16 * photon})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(n.x, n.y, r * 1.035, 0, Math.PI*2); ctx.stroke();
+
+    // Additive halo so the absence reads as gravitationally lit, not a flat disc
+    bloom(GLOW_AZURE, n.x, n.y, r * 1.7 * sceneScale, 0.055 + 0.02 * photon);
 
     // Rim highlight — displaced starlight bending around absence
     ctx.strokeStyle = 'rgba(139,148,168,0.2)';
@@ -1320,13 +1585,19 @@
   function drawShockwave(n, t){
     if(n.state !== 'COLLAPSING' || n.collapseT < 0.25 || n.collapseT > 0.55) return;
     const phase = (n.collapseT - 0.25) / 0.3;
-    const r = CFG.starBaseRadius * (1.4 + phase * 3.2);
-    const alpha = 0.35 * (1 - phase);
     ctx.save();
     ctx.translate(n.x, n.y);
-    ctx.strokeStyle = `rgba(0,212,255,${alpha})`;
+    // leading ring — sharp and fast
+    const r1 = CFG.starBaseRadius * (1.4 + phase * 3.2);
+    ctx.strokeStyle = `rgba(0,212,255,${0.35 * (1 - phase)})`;
     ctx.lineWidth = 2.5 * (1 - phase);
-    ctx.beginPath(); ctx.arc(0,0,r, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, r1, 0, Math.PI*2); ctx.stroke();
+    // trailing ring — lags behind, softer, gives the wave body
+    const p2 = Math.max(0, phase - 0.18) / 0.82;
+    const r2 = CFG.starBaseRadius * (1.2 + p2 * 2.3);
+    ctx.strokeStyle = `rgba(198,232,255,${0.20 * (1 - p2)})`;
+    ctx.lineWidth = 1.6 * (1 - p2);
+    ctx.beginPath(); ctx.arc(0, 0, r2, 0, Math.PI*2); ctx.stroke();
     ctx.restore();
   }
 
@@ -1399,6 +1670,8 @@
       } else {
         els.eventsList.innerHTML = '';
         els.eventsList.appendChild(frag);
+        const newest = els.eventsList.firstElementChild;
+        if(newest) newest.classList.add('is-new');
       }
     }
   }
@@ -1700,6 +1973,30 @@
   window.addEventListener('touchend', ()=>{ commitGrip(); });
   window.addEventListener('touchcancel', ()=>{ cancelGrip(); });
 
+  // ------------------------------------------------------------------ Vignette (depth frame + collapse pulse)
+  // Pre-rendered once and stretched, so the per-frame cost is a single blit.
+  let vignetteCanvas = null;
+  function buildVignette(){
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const g = c.getContext('2d');
+    const rg = g.createRadialGradient(128, 128, 56, 128, 128, 182);
+    rg.addColorStop(0.00, 'rgba(0,0,0,0)');
+    rg.addColorStop(0.60, 'rgba(0,0,0,0.26)');
+    rg.addColorStop(1.00, 'rgba(0,0,0,0.70)');
+    g.fillStyle = rg; g.fillRect(0, 0, 256, 256);
+    vignetteCanvas = c;
+  }
+  function drawVignette(){
+    if(!vignetteCanvas) buildVignette();
+    const a = Screen.getVignetteAlpha();
+    if(a <= 0.004) return;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, a);
+    ctx.drawImage(vignetteCanvas, 0, 0, W, H);
+    ctx.restore();
+  }
+
   // ------------------------------------------------------------------ Render loop
   let last = performance.now();
   function frame(now){
@@ -1731,7 +2028,7 @@
         pullOffset = Input.pull;
         tension = Math.hypot(Input.pull.x, Input.pull.y) / CFG.pullThreshold;
       }
-      drawFilament(na, nb, pulled, pullOffset, clamp(tension,0,1));
+      drawFilament(na, nb, pulled, pullOffset, clamp(tension,0,1), now);
     });
 
     // systems
@@ -1741,8 +2038,9 @@
       else drawStar(n, now);
     });
 
-    // collapse shockwave
+    // collapse shockwave + surrender flash
     Sim.nodes.forEach(n=> drawShockwave(n, now));
+    Flash.draw();
 
     // tension ring on gripped star
     if(Input.active){
