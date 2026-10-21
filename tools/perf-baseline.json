@@ -1,0 +1,27 @@
+[
+  {
+    "label": "idle (5 intact systems)",
+    "ms": 9.17,
+    "errs": 0
+  },
+  {
+    "label": "one system collapsed",
+    "ms": 10.44,
+    "errs": 0
+  },
+  {
+    "label": "all absent + particle burst",
+    "ms": 13.58,
+    "errs": 0
+  },
+  {
+    "label": "all absent, mid-burst (particles live)",
+    "ms": 12.09,
+    "errs": 0
+  },
+  {
+    "label": "reduced motion",
+    "ms": 13.22,
+    "errs": 0
+  }
+]

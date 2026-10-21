@@ -108,3 +108,79 @@ JavaScript syntax was validated with `node --check`, and the file serves cleanly
 
 Original inventory: 5 systems, 5 stars, 13 planets, 5 moons. After collapsing all five systems: `planetsLost === 13`, `moonsLost === 5`, `total === 5`, `intact === 0`. The ledger reconciles to the original object inventory with each object counted exactly once.
 
+
+---
+
+# Verification round — improvement pass (25 recommendations)
+
+Re-verified after implementing recommendations 1–25. Method is unchanged: the
+headless harness in `tools/` (jsdom + `@napi-rs/canvas`, seeded PRNG, manually
+pumped rAF), with `1d905ad` re-measured using the *same* tooling so the
+before/after numbers are directly comparable.
+
+## Suites
+
+| Suite | Result |
+|-------|--------|
+| `tools/functional.js` (acceptance criteria) | **40 passed, 0 failed** |
+| `tools/features.js` (undo, persistence, a11y, export) | **48 passed, 0 failed** |
+| `tools/analyze.js` config matrix | **all 5 configurations clean, 0 runtime errors** |
+| `node --check` on the embedded script | passes |
+
+Config matrix: desktop 1200×800 at DPR 1 (1200×800 backing), DPR 2 (2400×1600),
+DPR 3 (2400×1600, capped); mobile portrait 390×844 @DPR2 (780×1688);
+reduced-motion. No errors in any.
+
+## Two defects found and fixed during this pass
+
+**1. `srAnnounce()` threw on every interaction.** The `aria-live` region existed
+as a CSS rule and a JS lookup, but the `#sr-live` element was never in the DOM,
+so every grip, collapse, undo, reset, mute and contrast toggle raised
+`TypeError: Cannot set properties of null`. Fixed by adding the element *and* a
+null guard — the guard alone would have silently disabled all screen-reader
+output.
+
+**2. `commitCollapse()` stressed systems that were not connected.** The edge loop
+computed `otherId = e.a === nodeId ? e.b : e.a` without first checking the edge
+actually contained `nodeId`, so unrelated edges fell through to `e.a` and were
+stressed anyway. With six edges and `stressPerCollapse: 34` against a
+`chainStressThreshold` of 100, the two adjacent systems received +68 per
+collapse instead of +34 — meaning **every** collapse triggered a full-board
+cascade. One grip was producing `direct:1, chain:4`. Fixed with an adjacency
+guard; chain reactions now follow the declared graph.
+
+## Measured effects (identical tooling, `1d905ad` → now)
+
+| Metric | Before | After |
+|---|---|---|
+| System colour distinctness, closest pair | 20.9 | **59.3** (2.8× more distinct) |
+| System colour distinctness, furthest pair | 126.2 | 164.3 |
+| `after reset` scene mean luminance | 45.92 | **31.63** (initial is 31.49) |
+| `after reset` bright-pixel fraction | 25.39% | 18.63% (initial is 18.56%) |
+| idle, ms/frame (software rasteriser) | 11.22 | **9.07** (−19%) |
+| one system collapsed, ms/frame | 13.26 | 10.36 (−22%) |
+| all systems absent, ms/frame | 10.84 | 13.31 (+23%) |
+| peak active particles | 122 | 125 |
+
+Notes on the above:
+
+- **Reset fidelity was genuinely broken.** Before this pass, resetting left the
+  scene ~45% brighter than a fresh load. The cause was `buildNebula()` using
+  `Math.random()`, so the backdrop was re-rolled on every reset and resize —
+  sometimes landing on a much brighter nebula. A seeded PRNG now makes the
+  background reproducible, and reset matches a fresh load to within 0.5%.
+- **The interactive states got ~20% faster** (batched starfield blits,
+  pre-rendered orbit-ring sprites, quality-scaled particle counts).
+- **The all-destroyed end state costs ~2.5 ms/frame more** than before. This is
+  the deliberate cost of the stronger absence lattice (recommendation 20). It is
+  the least interactive state in the app — a static tableau — and the figures
+  come from a software rasteriser with no GPU, where path fills and blits are
+  disproportionately expensive. Profiling by ablation attributed ~1.1 ms/frame
+  to the six spans in total.
+
+## Still not verified in this environment
+
+Unchanged from the list above: Web Audio, live-browser accessibility audit,
+GPU frame pacing on real hardware, and real pointer/touch gesture plumbing. The
+`#sr-live` defect in particular is a reminder that markup-level a11y claims
+still warrant a real audit.
